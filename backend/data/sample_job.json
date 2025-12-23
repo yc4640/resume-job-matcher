@@ -1,0 +1,17 @@
+{
+  "title": "Senior Backend Engineer",
+  "responsibilities": "Design and implement scalable backend services, lead technical architecture decisions, mentor junior developers, and collaborate with cross-functional teams to deliver high-quality software solutions.",
+  "requirements_text": "5+ years of backend development experience, strong knowledge of Python and web frameworks, experience with databases and cloud platforms, excellent problem-solving skills.",
+  "skills": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "Docker",
+    "Kubernetes",
+    "Redis",
+    "AWS"
+  ],
+  "company": "TechCorp Inc.",
+  "location": "San Francisco, CA / Remote",
+  "level": "Senior"
+}
