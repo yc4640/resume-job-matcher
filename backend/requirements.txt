@@ -3,3 +3,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 httpx==0.27.0  # Required for TestClient
+
+# ML and embedding dependencies for M2
+sentence-transformers==2.2.2
+numpy==1.24.3
