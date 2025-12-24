@@ -1,0 +1,217 @@
+# Technical Skills Vocabulary for Job Matching
+# This file contains a curated list of skills for skill matching and ranking
+
+# Programming Languages
+Python
+Java
+JavaScript
+TypeScript
+C++
+C#
+Go
+Rust
+Ruby
+PHP
+Swift
+Kotlin
+Scala
+R
+MATLAB
+
+# Web Frameworks & Libraries
+FastAPI
+Django
+Flask
+React
+Vue.js
+Angular
+Node.js
+Express.js
+Spring Boot
+ASP.NET
+Next.js
+Svelte
+
+# Machine Learning & AI
+Machine Learning
+Deep Learning
+Neural Networks
+TensorFlow
+PyTorch
+Keras
+Scikit-learn
+XGBoost
+LightGBM
+Computer Vision
+Natural Language Processing
+NLP
+Reinforcement Learning
+Transfer Learning
+
+# NLP & LLM
+Transformers
+BERT
+GPT
+Claude
+LLM
+Fine-tuning
+Prompt Engineering
+RAG
+Langchain
+spaCy
+NLTK
+Hugging Face
+Text Mining
+Sentiment Analysis
+Named Entity Recognition
+Question Answering
+
+# Recommendation & Search
+Recommendation Systems
+Collaborative Filtering
+Content-Based Filtering
+Matrix Factorization
+Ranking Algorithms
+Learning-to-Rank
+Information Retrieval
+Search Algorithms
+Elasticsearch
+Solr
+Lucene
+Vector Search
+Similarity Search
+
+# Data Engineering & Big Data
+Data Engineering
+ETL
+Data Pipeline
+Apache Spark
+Spark
+Hadoop
+Kafka
+Airflow
+Flink
+Data Warehouse
+Data Lake
+Snowflake
+Redshift
+BigQuery
+
+# Databases
+SQL
+PostgreSQL
+MySQL
+MongoDB
+Redis
+Cassandra
+DynamoDB
+Neo4j
+Oracle
+SQL Server
+SQLite
+Elasticsearch
+
+# Cloud & Infrastructure
+AWS
+Azure
+GCP
+Cloud Computing
+Docker
+Kubernetes
+Terraform
+Ansible
+Jenkins
+CI/CD
+DevOps
+MLOps
+
+# Distributed Systems
+Distributed Systems
+Microservices
+Service Mesh
+API Gateway
+Load Balancing
+Message Queue
+Event-Driven Architecture
+gRPC
+GraphQL
+REST API
+WebSocket
+
+# Graph & Network
+Graph Neural Networks
+Graph Algorithms
+Graph Database
+Knowledge Graph
+Network Analysis
+Social Network Analysis
+
+# Data Science & Analytics
+Data Science
+Data Analysis
+Statistics
+A/B Testing
+Experimentation
+Hypothesis Testing
+Causal Inference
+Time Series
+Forecasting
+Regression
+Classification
+Clustering
+
+# Visualization & Tools
+Data Visualization
+Matplotlib
+Plotly
+Tableau
+Power BI
+D3.js
+Seaborn
+Pandas
+NumPy
+Jupyter
+Streamlit
+
+# Software Engineering
+Git
+GitHub
+GitLab
+Agile
+Scrum
+TDD
+Unit Testing
+Integration Testing
+Code Review
+Refactoring
+Design Patterns
+Object-Oriented Programming
+Functional Programming
+System Design
+
+# Embeddings & Vectors
+Embeddings
+Vector Databases
+FAISS
+Pinecone
+Milvus
+Weaviate
+Cosine Similarity
+Semantic Search
+
+# Research & Academic
+Research
+Publication
+Paper Writing
+Literature Review
+Conference Presentation
+Peer Review
+
+# Soft Skills (relevant for matching)
+Leadership
+Mentorship
+Communication
+Collaboration
+Problem Solving
+Critical Thinking
+Project Management

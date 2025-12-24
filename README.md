@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M2 阶段，实现了基于语义嵌入的智能推荐系统和基于技能匹配的结构化匹配算法。
+LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M3 阶段，实现了可解释的轻量排序层，在语义嵌入的基础上提供透明的打分机制。
 
 ### 当前功能
 
@@ -20,6 +20,17 @@ LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目
 - ✅ 批量职位数据集（jobs.jsonl）和简历数据集（resumes.jsonl）
 - ✅ 完全本地运行，无需付费 API
 
+#### M3：可解释排序功能
+- ✅ 轻量排序层 - 在 embedding 召回基础上引入多维度打分
+- ✅ 技能词表 (180+ 技能) - 标准化技能匹配
+- ✅ YAML 配置 - 无需修改代码即可调整排序权重
+- ✅ 多维度特征：
+  - `embedding_score`: 语义相似度
+  - `skill_overlap`: 技能覆盖率
+  - `keyword_bonus`: 关键字命中加分
+  - `gap_penalty`: 缺失关键技能惩罚
+- ✅ 可解释性 - 自动生成排名第一的详细解释
+
 #### 通用特性
 - ✅ RESTful API 设计
 - ✅ 自动生成的 API 文档（Swagger UI / ReDoc）
@@ -33,15 +44,19 @@ lm/
 │   ├── schemas.py           # Pydantic 数据模型定义
 │   ├── test_match.py        # 匹配接口测试文件
 │   ├── requirements.txt     # Python 依赖
-│   ├── services/            # 业务逻辑服务（M2 新增）
+│   ├── services/            # 业务逻辑服务
 │   │   ├── __init__.py         # 服务包初始化
-│   │   ├── embedding.py        # 文本嵌入服务
-│   │   └── retrieval.py        # 检索和排序服务
+│   │   ├── embedding.py        # 文本嵌入服务 (M2)
+│   │   ├── retrieval.py        # 检索和排序服务 (M2)
+│   │   └── ranking.py          # 可解释排序服务 (M3)
+│   ├── config/              # 配置文件 (M3 新增)
+│   │   └── ranking_config.yaml # 排序权重配置
 │   └── data/
-│       ├── sample_job.json     # 示例职位数据
-│       ├── sample_resume.json  # 示例简历数据
-│       ├── jobs.jsonl          # 批量职位数据（22条）
-│       └── resumes.jsonl       # 批量简历数据（7条）
+│       ├── sample_job.json        # 示例职位数据
+│       ├── sample_resume.json     # 示例简历数据
+│       ├── jobs.jsonl             # 批量职位数据（22条）
+│       ├── resumes.jsonl          # 批量简历数据（7条）
+│       └── skills_vocabulary.txt  # 技能词表（180+ 技能）(M3)
 ├── .gitignore               # Git 忽略文件配置
 └── README.md                # 项目说明文档
 ```
@@ -443,57 +458,95 @@ python test_match.py
       "level": "Mid-level",
       "similarity_score": 0.682073712348938,
       "matched_skills": [
-        "NLP",
-        "Prompt Engineering",
         "Python",
-        "spaCy",
         "Transformers",
+        "Prompt Engineering",
+        "NLP",
+        "LLM",
         "BERT",
-        "LLM"
-      ]
+        "spaCy"
+      ],
+      "gap_skills": [],
+      "features": {
+        "embedding_score": 0.682073712348938,
+        "skill_overlap": 1,
+        "keyword_bonus": 0.85,
+        "gap_penalty": 0,
+        "final_score": 0.7428294849395752
+      }
     },
     {
       "rank": 2,
-      "title": "NLP Research Scientist",
-      "company": "AI Research Lab",
-      "location": "Remote",
-      "level": "Senior",
-      "similarity_score": 0.6600039005279541,
-      "matched_skills": [
-        "PyTorch",
-        "GPT",
-        "NLP",
-        "Python",
-        "Transformers",
-        "BERT"
-      ]
-    },
-    {
-      "rank": 3,
       "title": "LLM Engineer",
       "company": "AI Startup",
       "location": "Remote",
       "level": null,
       "similarity_score": 0.6174665093421936,
       "matched_skills": [
-        "GPT",
-        "Prompt Engineering",
-        "Langchain",
         "Python",
-        "Claude",
+        "Prompt Engineering",
         "LLM",
+        "Claude",
+        "RAG",
+        "GPT",
         "Fine-tuning",
-        "RAG"
-      ]
+        "Langchain"
+      ],
+      "gap_skills": [
+        "Vector Databases"
+      ],
+      "features": {
+        "embedding_score": 0.6174665093421936,
+        "skill_overlap": 0.8888888888888888,
+        "keyword_bonus": 0.9,
+        "gap_penalty": 0.1,
+        "final_score": 0.6836532704035442
+      }
+    },
+    {
+      "rank": 3,
+      "title": "NLP Research Scientist",
+      "company": "AI Research Lab",
+      "location": "Remote",
+      "level": "Senior",
+      "similarity_score": 0.6600039005279541,
+      "matched_skills": [
+        "Python",
+        "PyTorch",
+        "Transformers",
+        "NLP",
+        "GPT",
+        "BERT"
+      ],
+      "gap_skills": [
+        "Deep Learning",
+        "Research"
+      ],
+      "features": {
+        "embedding_score": 0.6600039005279541,
+        "skill_overlap": 0.75,
+        "keyword_bonus": 0.7,
+        "gap_penalty": 0.2,
+        "final_score": 0.6090015602111816
+      }
     }
   ],
-  "total_jobs_searched": 22
+  "total_jobs_searched": 22,
+  "explanation": "【NLP Engineer - Conversational AI】Ranked #1 for the following reasons:\n\n1. Semantic Similarity: 0.682 (Weight: 0.4)\n   - The job description is highly semantically aligned with the resume content\n\n2. Skill Coverage: 1.000 (Weight: 0.3)\n   - Matched skills (7): Python, Transformers, Prompt Engineering, NLP, LLM\n   - Missing skills (0): None\n\n3. Keyword Bonus: 0.850 (Weight: 0.2)\n   - Matches high-priority skills\n\n4. Gap Penalty: 0.000 (Weight: 0.1)\n   - Penalty applied for missing critical skills\n\nOverall Score: 0.743"
 }
 ```
 
-**说明：**
-- `similarity_score`：基于语义嵌入的余弦相似度（0-1之间，越接近1表示越相似）
-- `matched_skills`：简历技能与职位要求技能的交集（使用 M1 的技能匹配逻辑）
+**说明（M3 更新）：**
+- `similarity_score`：基于语义嵌入的余弦相似度（0-1之间，等同于 embedding_score）
+- `matched_skills`：简历技能与职位要求技能的交集（基于标准化技能词表）
+- `gap_skills`：职位要求但简历缺失的技能（M3 新增）
+- `features`：可解释的排序特征（M3 新增）
+  - `embedding_score`：语义相似度（0-1）
+  - `skill_overlap`：技能覆盖率（0-1）
+  - `keyword_bonus`：关键词加分（0-1）
+  - `gap_penalty`：缺失惩罚（0-1）
+  - `final_score`：综合得分（加权计算）
+- `explanation`：排名第一职位的详细解释（M3 新增）
 - `total_jobs_searched`：从 jobs.jsonl 加载的总职位数量
 
 #### 方式二：使用 curl
@@ -512,20 +565,24 @@ curl -X POST http://localhost:8000/recommend_jobs \
   }'
 ```
 
-#### 推荐接口特点
+#### 推荐接口特点（M3 增强）
 
-- **语义匹配**：使用 sentence-transformers 本地模型（all-MiniLM-L6-v2）进行文本嵌入
+- **语义匹配 (M2)**：使用 sentence-transformers 本地模型（all-MiniLM-L6-v2）进行文本嵌入
+- **多维度排序 (M3)**：结合语义相似度、技能覆盖率、关键词加分、缺失惩罚的综合打分
+- **可解释性 (M3)**：自动生成排名第一职位的详细解释，说明为什么它最匹配
+- **灵活配置 (M3)**：通过 YAML 配置文件调整排序权重，无需修改代码
+- **标准化技能 (M3)**：基于 180+ 技能词表进行标准化匹配
 - **无需付费 API**：完全本地运行，无需调用外部 API
-- **综合排序**：基于职位描述、职责、要求和技能的综合语义相似度排序
-- **技能重叠信息**：额外提供精确的技能匹配列表，方便快速了解匹配度
+- **技能重叠信息**：提供精确的匹配技能和缺失技能列表
 
 ## 技术栈
 
 - **FastAPI**: 现代、高性能的 Python Web 框架
 - **Pydantic**: 数据验证和设置管理
 - **Uvicorn**: ASGI 服务器
-- **Sentence-Transformers**: 本地文本嵌入模型（M2 新增）
-- **NumPy**: 向量计算和相似度计算（M2 新增）
+- **Sentence-Transformers**: 本地文本嵌入模型（M2）
+- **NumPy**: 向量计算和相似度计算（M2）
+- **PyYAML**: 配置文件管理（M3）
 
 ## 匹配算法说明
 
@@ -558,11 +615,130 @@ curl -X POST http://localhost:8000/recommend_jobs \
    - 返回最匹配的 top-k 个职位
    - 附带精确的技能重叠信息（复用 M1 逻辑）
 
+### M3：可解释的轻量排序层
+
+在 M2 embedding 召回基础上，引入多维度打分机制：
+
+#### 1. 排序特征
+
+- **embedding_score (语义相似度)**：
+  - 来自 M2 的文本嵌入余弦相似度
+  - 范围：0-1
+
+- **skill_overlap (技能覆盖率)**：
+  - 基于标准化技能词表（180+ 技能）的匹配率
+  - 公式：`matched_skills / job_required_skills`
+  - 范围：0-1
+
+- **keyword_bonus (关键词加分)**：
+  - 高优先级技能匹配加分（如 Python、Machine Learning、LLM 等）
+  - 高优先级技能权重 1.5x
+  - 归一化到 0-1 范围
+
+- **gap_penalty (缺失惩罚)**：
+  - 缺失关键技能的惩罚（如 Python、SQL 等核心技能）
+  - 关键技能缺失权重 2.0x
+  - 归一化到 0-1 范围
+
+#### 2. 打分公式
+
+```
+final_score = w1 * embedding_score
+            + w2 * skill_overlap
+            + w3 * keyword_bonus
+            - w4 * gap_penalty
+```
+
+默认权重配置（可通过 YAML 调整）：
+- `w1 (embedding)`: 0.4
+- `w2 (skill_overlap)`: 0.3
+- `w3 (keyword_bonus)`: 0.2
+- `w4 (gap_penalty)`: 0.1
+
+#### 3. 配置文件
+
+排序权重通过 `config/ranking_config.yaml` 配置，支持：
+- 调整各特征权重
+- 定义高优先级关键词列表
+- 定义关键技能列表
+- 调整奖惩倍数
+- **无需修改代码即可调整排序策略**
+
+#### 4. 可解释性
+
+系统自动生成排名第一职位的详细解释，包括：
+- 各维度特征分数
+- 匹配技能列表
+- 缺失技能列表
+- 综合得分计算过程
+
+示例解释输出：
+```
+【NLP Engineer - Conversational AI】排名第一的原因：
+
+1. 语义相似度: 0.682 (权重: 0.4)
+   - 职位描述与简历内容高度匹配
+
+2. 技能覆盖率: 0.875 (权重: 0.3)
+   - 匹配技能 (7个): NLP, Prompt Engineering, Python, ...
+   - 缺失技能 (1个): Dialogue Systems
+
+3. 关键词加分: 0.650 (权重: 0.2)
+   - 匹配高优先级技能
+
+4. 缺失惩罚: 0.100 (权重: 0.1)
+   - 缺失关键技能的惩罚
+
+综合得分: 0.723
+```
+
+## M3 配置说明
+
+### 排序权重配置
+
+编辑 `backend/config/ranking_config.yaml` 调整排序策略：
+
+```yaml
+weights:
+  embedding: 0.4        # 语义相似度权重
+  skill_overlap: 0.3    # 技能覆盖率权重
+  keyword_bonus: 0.2    # 关键词加分权重
+  gap_penalty: 0.1      # 缺失惩罚权重
+
+keywords:
+  high_priority:        # 高优先级关键词
+    - "Python"
+    - "Machine Learning"
+    - "LLM"
+    # ... 更多
+  high_priority_multiplier: 1.5  # 加分倍数
+
+gap_penalty:
+  critical_skills:      # 关键技能
+    - "Python"
+    - "SQL"
+  critical_penalty_multiplier: 2.0  # 惩罚倍数
+```
+
+### 技能词表
+
+`backend/data/skills_vocabulary.txt` 包含 180+ 标准化技能，涵盖：
+- 编程语言（Python, Java, JavaScript, ...）
+- Web 框架（FastAPI, Django, React, ...）
+- ML/AI（Machine Learning, Deep Learning, TensorFlow, ...）
+- NLP/LLM（Transformers, BERT, GPT, RAG, ...）
+- 推荐/搜索（Recommendation Systems, Elasticsearch, ...）
+- 数据工程（Spark, Airflow, ETL, ...）
+- 云/基础设施（AWS, Docker, Kubernetes, ...）
+
+可根据需要添加新技能到词表。
+
 ## 下一步计划
 
 后续 Milestone 将实现：
 - ✅ ~~基于向量嵌入的语义匹配~~（M2 已完成）
 - ✅ ~~批量匹配和排序功能~~（M2 已完成）
+- ✅ ~~可解释的轻量排序层~~（M3 已完成）
 - 集成 LLM 进行更智能的匹配分析和个性化建议
 - 数据库集成存储职位和简历数据
 - 用户认证和授权系统

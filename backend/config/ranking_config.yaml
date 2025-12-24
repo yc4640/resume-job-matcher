@@ -1,0 +1,59 @@
+# Ranking Configuration for Job-Resume Matching (M3)
+# Adjust these weights to change ranking strategy without modifying code
+
+# Feature Weights for Final Score Calculation
+# Formula: final_score = w1*embedding_score + w2*skill_overlap + w3*keyword_bonus - w4*gap_penalty
+weights:
+  # Weight for semantic similarity from embeddings (0-1 range)
+  embedding: 0.4
+
+  # Weight for skill overlap ratio (0-1 range)
+  skill_overlap: 0.3
+
+  # Weight for keyword bonus (count-based, normalized)
+  keyword_bonus: 0.2
+
+  # Weight for gap penalty (count-based, normalized)
+  gap_penalty: 0.1
+
+# Keyword Configuration
+keywords:
+  # High-priority keywords that give bonus points when matched
+  high_priority:
+    - "Python"
+    - "Machine Learning"
+    - "Deep Learning"
+    - "LLM"
+    - "NLP"
+    - "Recommendation Systems"
+    - "Search"
+    - "Distributed Systems"
+
+  # Bonus multiplier for high-priority keyword matches
+  high_priority_multiplier: 1.5
+
+# Gap Penalty Configuration
+gap_penalty:
+  # Critical skills that severely penalize if missing
+  critical_skills:
+    - "Python"
+    - "SQL"
+
+  # Penalty multiplier for missing critical skills
+  critical_penalty_multiplier: 2.0
+
+# Normalization Settings
+normalization:
+  # Maximum number of keywords to consider for normalization
+  max_keywords: 10
+
+  # Maximum number of gaps to consider for normalization
+  max_gaps: 10
+
+# Feature Display Settings
+display:
+  # Show detailed feature breakdown in response
+  show_features: true
+
+  # Show explanation for top recommendation
+  show_explanation: true
