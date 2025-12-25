@@ -27,6 +27,8 @@ def _get_model() -> SentenceTransformer:
         print(f"Model loaded successfully")
     return _model
 
+def get_embedding_model() -> SentenceTransformer:
+    return _get_model()
 
 def embed_texts(texts: Union[str, List[str]]) -> np.ndarray:
     """

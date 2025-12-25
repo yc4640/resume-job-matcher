@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M3 阶段，实现了可解释的轻量排序层，在语义嵌入的基础上提供透明的打分机制。
+LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M4 阶段，在可解释排序的基础上，增加了 RAG（检索增强生成）可解释层，为每个推荐职位生成基于证据的匹配分析。
 
 ### 当前功能
 
@@ -31,6 +31,18 @@ LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目
   - `gap_penalty`: 缺失关键技能惩罚
 - ✅ 可解释性 - 自动生成排名第一的详细解释
 
+#### M4：RAG 可解释层
+- ✅ 证据构建 - 从职位和简历中提取结构化证据
+- ✅ 智能检索 - 基于语义相似度选择最相关的证据片段
+- ✅ LLM 生成 - 使用大语言模型生成基于证据的解释
+- ✅ 三维分析 - 为每个推荐职位提供：
+  - `explanation`: 为什么这个岗位适合候选人
+  - `gap_analysis`: 候选人缺少哪些关键技能或资质
+  - `improvement_suggestions`: 具体可行的提升建议
+- ✅ 防止幻觉 - 严格基于证据生成，LLM 仅用于解释层，不参与排序
+- ✅ **技能自动提取与合并** - 从简历文本（education/projects/experience）中自动提取技能，避免过度严格的匹配
+- ✅ **软技能过滤** - 软技能（如 Communication、Leadership）缺失不计入 gap_penalty
+
 #### 通用特性
 - ✅ RESTful API 设计
 - ✅ 自动生成的 API 文档（Swagger UI / ReDoc）
@@ -44,11 +56,14 @@ lm/
 │   ├── schemas.py           # Pydantic 数据模型定义
 │   ├── test_match.py        # 匹配接口测试文件
 │   ├── requirements.txt     # Python 依赖
+│   ├── .env.example         # 环境变量配置示例 (M4)
 │   ├── services/            # 业务逻辑服务
 │   │   ├── __init__.py         # 服务包初始化
 │   │   ├── embedding.py        # 文本嵌入服务 (M2)
 │   │   ├── retrieval.py        # 检索和排序服务 (M2)
-│   │   └── ranking.py          # 可解释排序服务 (M3)
+│   │   ├── ranking.py          # 可解释排序服务 (M3)
+│   │   ├── rag.py              # RAG 可解释层服务 (M4)
+│   │   └── utils.py            # 工具函数（技能提取与合并）(M4.1)
 │   ├── config/              # 配置文件 (M3 新增)
 │   │   └── ranking_config.yaml # 排序权重配置
 │   └── data/
@@ -87,7 +102,27 @@ cd backend
 pip install -r requirements.txt
 ```
 
-### 4. 启动服务
+### 4. 配置环境变量（M4 新增）
+
+为了使用 RAG 可解释层功能，需要配置 OpenAI API Key：
+
+```bash
+# 复制环境变量示例文件
+cp .env.example .env
+
+# 编辑 .env 文件，填入你的 OpenAI API Key
+# OPENAI_API_KEY=sk-your-actual-api-key-here
+```
+
+**获取 OpenAI API Key：**
+1. 访问 https://platform.openai.com/api-keys
+2. 登录或注册 OpenAI 账号
+3. 创建新的 API Key
+4. 将 API Key 填入 `.env` 文件
+
+**注意：** 如果不配置 API Key，推荐接口仍可正常工作，但每个推荐职位的 `explanation`、`gap_analysis` 和 `improvement_suggestions` 字段将为 `null`。
+
+### 5. 启动服务
 
 ```bash
 # 方式一：使用 uvicorn 命令
@@ -99,7 +134,7 @@ python main.py
 
 服务启动后，访问 http://localhost:8000
 
-### 5. 查看 API 文档
+### 6. 查看 API 文档
 
 FastAPI 自动生成交互式 API 文档：
 
@@ -536,7 +571,7 @@ python test_match.py
 }
 ```
 
-**说明（M3 更新）：**
+**说明（M4 更新）：**
 - `similarity_score`：基于语义嵌入的余弦相似度（0-1之间，等同于 embedding_score）
 - `matched_skills`：简历技能与职位要求技能的交集（基于标准化技能词表）
 - `gap_skills`：职位要求但简历缺失的技能（M3 新增）
@@ -547,7 +582,35 @@ python test_match.py
   - `gap_penalty`：缺失惩罚（0-1）
   - `final_score`：综合得分（加权计算）
 - `explanation`：排名第一职位的详细解释（M3 新增）
+- **M4 新增字段（每个推荐职位）：**
+  - `explanation`：为什么这个岗位适合候选人（基于证据的解释）
+  - `gap_analysis`：候选人缺少哪些关键技能或资质
+  - `improvement_suggestions`：具体可行的提升建议
 - `total_jobs_searched`：从 jobs.jsonl 加载的总职位数量
+
+**M4 返回示例（单个推荐职位）：**
+```json
+{
+  "rank": 1,
+  "title": "NLP Engineer - Conversational AI",
+  "company": "ChatBot Solutions",
+  "location": "Austin, TX",
+  "level": "Mid-level",
+  "similarity_score": 0.682,
+  "matched_skills": ["Python", "Transformers", "NLP", "LLM"],
+  "gap_skills": [],
+  "features": {
+    "embedding_score": 0.682,
+    "skill_overlap": 1.0,
+    "keyword_bonus": 0.85,
+    "gap_penalty": 0.0,
+    "final_score": 0.743
+  },
+  "explanation": "This position is an excellent fit for you because your experience building conversational AI systems with GPT-4 and RAG directly aligns with the job's core requirements. Your projects demonstrate practical expertise in NLP and LLM applications, particularly in handling large-scale user interactions (500K+ users).",
+  "gap_analysis": "While you have strong NLP fundamentals, the position requires experience with dialogue systems and intent recognition frameworks which are not explicitly mentioned in your resume. Additionally, production-scale deployment experience with specific chatbot frameworks would strengthen your candidacy.",
+  "improvement_suggestions": "- Build a dialogue management system using Rasa or similar frameworks to demonstrate intent recognition capabilities\n- Complete a project focusing on multi-turn conversation handling and context management\n- Document your experience with A/B testing and performance optimization in production chatbot environments"
+}
+```
 
 #### 方式二：使用 curl
 
@@ -583,6 +646,7 @@ curl -X POST http://localhost:8000/recommend_jobs \
 - **Sentence-Transformers**: 本地文本嵌入模型（M2）
 - **NumPy**: 向量计算和相似度计算（M2）
 - **PyYAML**: 配置文件管理（M3）
+- **OpenAI API**: LLM 生成解释文本（M4）
 
 ## 匹配算法说明
 
@@ -692,6 +756,248 @@ final_score = w1 * embedding_score
 综合得分: 0.723
 ```
 
+### M4.1：技能自动提取与合并（Skills Auto-Extract & Merge）
+
+#### 问题背景
+
+在传统的技能匹配中，系统仅依赖用户在 `resume.skills` 列表中明确列出的技能。这会导致以下问题：
+
+1. **过度严格的匹配**：很多技能实际上在简历的 `experience`、`projects` 或 `education` 中提到，但未在 `skills` 列表中列出
+2. **误判技能缺口**：例如简历中提到 "conducted NER research" 或 "published papers on entity extraction"，但因为 `skills` 列表没写 "NER" 或 "Entity Extraction"，就被判定为缺失技能
+
+#### 解决方案
+
+系统自动从简历文本中提取技能，并与用户提供的技能列表合并：
+
+**核心逻辑：**
+```
+merged_skills = union(
+    user_provided_resume.skills,
+    extracted_skills_from_resume_text
+)
+```
+
+**提取流程：**
+1. **文本组装**：将 `resume.education`、`resume.projects`、`resume.experience` 组合成一段文本
+2. **词汇匹配**：基于 `skills_vocabulary.txt`（包含 180+ 技能词）进行匹配
+3. **智能边界检测**：使用正则表达式的词边界（`\b`），避免误匹配（例如 "C" 不会匹配 "Cloud", "React" 不会匹配 "Reactivity"）
+4. **特殊字符处理**：正确处理 "C++"、"C#"、".NET" 等包含特殊字符的技能
+5. **大小写规范化**：匹配时忽略大小写，但保留词汇表中的原始大小写
+6. **去重合并**：将提取的技能与用户提供的技能合并，去重后返回
+
+**示例：**
+```python
+# 用户提供的技能
+resume.skills = ["Python", "Machine Learning"]
+
+# 简历文本中提到的内容
+resume.projects = "Conducted research on NER and entity extraction..."
+resume.experience = "Published papers on Named Entity Recognition..."
+
+# 自动提取的技能
+extracted_skills = ["NER", "Entity Extraction", "Research", "Publication"]
+
+# 最终合并后的技能（用于匹配）
+merged_skills = ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication"]
+```
+
+#### 软技能过滤
+
+为了避免对候选人过度惩罚，系统在计算 `gap_penalty` 时会**过滤掉软技能**：
+
+**软技能列表**（不计入缺失惩罚）：
+- Communication（沟通）
+- Leadership（领导力）
+- Collaboration（协作）
+- Teamwork（团队合作）
+- Problem Solving（问题解决）
+- Critical Thinking（批判性思维）
+- Time Management（时间管理）
+- Adaptability（适应性）
+- 等等...
+
+**为什么过滤软技能？**
+- 软技能很重要，但缺失不应该像技术技能那样被严重扣分
+- 软技能难以在简历中量化，容易被遗漏
+- 软技能更多是在面试中评估，而非简历筛选阶段的硬性要求
+
+**注意：** 软技能仍然会：
+- ✅ 出现在 `matched_skills` 中（如果匹配）
+- ✅ 出现在 `gap_skills` 中（如果缺失）
+- ✅ 可用于 `keyword_bonus` 加分
+- ✅ 出现在 RAG 解释的 evidence 中
+- ❌ **不会**计入 `gap_penalty` 扣分
+
+#### 实现位置
+
+**新增文件：** `backend/services/utils.py`
+- `extract_skills_from_text(text, vocab)` - 从文本中提取技能
+- `merge_resume_skills(resume, vocab)` - 合并用户技能与提取技能
+- `filter_soft_skills(skills)` - 过滤软技能
+- `SOFT_SKILLS` - 软技能常量集合
+
+**调用位置：** `backend/services/ranking.py` 的 `rank_jobs_with_features` 函数
+```python
+# === SKILLS AUTO-EXTRACT & MERGE ===
+# Line 247-255
+vocab_list = list(vocab)
+merged_skills = merge_resume_skills(resume, vocab_list)
+resume_skills_normalized = normalize_skills(merged_skills, vocab)
+```
+
+**使用位置：**
+- ✅ `matched_skills` 计算 - 使用 merged skills
+- ✅ `gap_skills` 计算 - 使用 merged skills
+- ✅ `skill_overlap` 计算 - 使用 merged skills
+- ✅ `keyword_bonus` 计算 - 使用 merged skills
+- ✅ `gap_penalty` 计算 - 使用 merged skills（过滤软技能后）
+
+#### 验收示例
+
+**场景：** 简历中提到了 NER 研究，但未在 skills 列表中列出
+
+```json
+{
+  "resume": {
+    "skills": ["Python", "Machine Learning"],
+    "projects": "Built NER system for entity extraction in medical texts",
+    "experience": "Conducted research on Named Entity Recognition, published 2 papers",
+    "education": "Thesis: Literature review of state-of-the-art NER methods"
+  }
+}
+```
+
+**旧行为（问题）：**
+- `matched_skills`: ["Python", "Machine Learning"]
+- `gap_skills`: ["NER", "Entity Extraction", "Research", "Publication"]  ❌ 误判为缺失
+
+**新行为（修复）：**
+- `merged_skills`: ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication", "Literature Review"]
+- `matched_skills`: ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication"]
+- `gap_skills`: []  ✅ 正确识别
+
+### M4：RAG 可解释层架构
+
+#### RAG 在系统中的位置
+
+RAG（Retrieval-Augmented Generation）层是 **纯解释层**，位于排序之后，**不参与职位排序逻辑**。整个推荐流程如下：
+
+```
+1. [M2 语义检索] 使用 embedding 计算所有职位与简历的相似度
+           ↓
+2. [M3 可解释排序] 基于多维度特征（embedding + skill + keyword + gap）计算最终得分并排序
+           ↓
+3. [M3 Top-K 选择] 选出排名前 K 的职位（排序已确定，不再改变）
+           ↓
+4. [M4 RAG 解释层] 对每个 Top-K 职位生成基于证据的解释
+   ├─ 证据构建：提取职位和简历的结构化证据
+   ├─ 智能检索：选择最相关的证据片段
+   └─ LLM 生成：基于证据生成 explanation / gap_analysis / improvement_suggestions
+           ↓
+5. [返回结果] 包含排序、特征、RAG 解释的完整推荐结果
+```
+
+**关键约束：**
+- M4 的 RAG 层 **仅用于生成解释文本**
+- **不改变** M3 的 `final_score` 和排序顺序
+- LLM 输出必须基于证据，禁止幻觉
+
+#### RAG 的检索对象
+
+RAG 检索的对象是 **职位和简历的文本片段（chunks）**，具体包括：
+
+**职位证据（Job Evidence）：**
+- `title`：职位名称
+- `responsibilities`：岗位职责
+- `requirements_text`：任职要求
+- `skills`：要求技能列表
+
+**简历证据（Resume Evidence）：**
+- `education`：教育背景
+- `projects`：项目经历
+- `experience`：工作经验
+- `skills`：技能列表
+
+**检索流程：**
+1. **文本分块（Chunking）**：将职位描述和简历内容按句子切分成小片段（约 200 字符）
+2. **语义嵌入**：使用 sentence-transformers 模型对所有 chunks 计算向量表示
+3. **相似度计算**：计算职位 chunks 与简历 chunks 之间的交叉相似度
+4. **Top-K 选择**：选出最相关的 3 个职位 chunks 和 3 个简历 chunks 作为证据
+
+**示例：**
+- 职位 chunk: `[responsibilities] Design and implement scalable NLP systems for production chatbots.`
+- 简历 chunk: `[projects] Built chatbot using GPT-4 and RAG, serving 500K+ users with 90% satisfaction rate.`
+- 这两个 chunks 语义相似度高，会被选为证据传递给 LLM
+
+#### LLM 在系统中的角色
+
+LLM（大语言模型）**仅承担"解释生成"角色**，不参与任何排序或推荐决策：
+
+**LLM 的职责：**
+1. **阅读证据**：接收检索出的最相关职位和简历片段
+2. **生成解释**：基于证据回答"为什么这个职位适合候选人"
+3. **分析差距**：基于证据指出候选人缺少的关键技能
+4. **提供建议**：给出具体可行的提升建议
+
+**LLM 不做的事：**
+- ❌ 不计算匹配分数（由 M3 ranking 层完成）
+- ❌ 不决定职位排序（由 M3 final_score 决定）
+- ❌ 不检索职位（由 M2 embedding 完成）
+- ❌ 不评估技能匹配（由 M3 skill_overlap 完成）
+
+**使用的 LLM 模型：**
+- 默认：`gpt-4o-mini`（OpenAI）
+- 优势：成本低、速度快、适合生成简短解释
+- 温度设置：0.3（低温度保证输出稳定、事实性强）
+
+#### 如何避免 LLM 编造内容
+
+为了防止 LLM 幻觉（hallucination），我们采取了多层防护措施：
+
+**1. 证据约束（Evidence Grounding）**
+- LLM 只能看到通过检索选出的证据片段
+- Prompt 明确要求："Based ONLY on the evidence provided below"
+- 禁止 LLM 添加未在证据中出现的信息
+
+**2. 结构化 Prompt**
+- 提供清晰的职位证据和简历证据
+- 明确列出 `matched_skills` 和 `gap_skills`（由 M3 计算得出）
+- 要求 LLM 引用具体证据内容
+
+**3. 低温度生成**
+- 设置 `temperature=0.3`（默认是 1.0）
+- 低温度使输出更确定性、更贴近事实
+- 减少创造性发挥，增强事实准确性
+
+**4. 格式化输出**
+- 要求 LLM 按照固定格式输出（EXPLANATION / GAP_ANALYSIS / IMPROVEMENT_SUGGESTIONS）
+- 自动解析和验证输出格式
+- 失败时回退到基于规则的简单解释
+
+**5. 检索质量保证**
+- 使用与 M2 相同的 sentence-transformers 模型进行检索
+- 基于余弦相似度选择最相关的证据
+- 确保传递给 LLM 的证据与职位-简历匹配度高
+
+**Prompt 示例片段：**
+```
+CRITICAL RULES:
+- Base your analysis ONLY on the evidence provided above
+- Reference specific details from the job and resume evidence
+- Do not make assumptions or add information not present in the evidence
+- Keep each section concise and focused
+```
+
+**后备机制：**
+如果 LLM API 调用失败（网络问题、API key 未设置等），系统会回退到基于规则的简单解释：
+```python
+{
+    "explanation": "This position matches 4 of your skills: Python, NLP, LLM, Transformers. The overall compatibility score is 0.68.",
+    "gap_analysis": "You may need to develop these skills: Dialogue Systems, Intent Recognition.",
+    "improvement_suggestions": "- Review the job requirements carefully\n- Consider online courses for missing skills"
+}
+```
+
 ## M3 配置说明
 
 ### 排序权重配置
@@ -739,7 +1045,7 @@ gap_penalty:
 - ✅ ~~基于向量嵌入的语义匹配~~（M2 已完成）
 - ✅ ~~批量匹配和排序功能~~（M2 已完成）
 - ✅ ~~可解释的轻量排序层~~（M3 已完成）
-- 集成 LLM 进行更智能的匹配分析和个性化建议
+- ✅ ~~集成 LLM 进行更智能的匹配分析和个性化建议~~（M4 已完成）
 - 数据库集成存储职位和简历数据
 - 用户认证和授权系统
 - 缓存优化（Redis）

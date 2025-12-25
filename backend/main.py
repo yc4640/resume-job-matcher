@@ -4,6 +4,8 @@ Provides health check endpoint, job-resume matching endpoint for M1 milestone,
 job recommendation endpoint for M2 milestone,
 and explainable ranking for M3 milestone.
 """
+from dotenv import load_dotenv
+load_dotenv()
 
 import json
 from fastapi import FastAPI
@@ -13,6 +15,7 @@ from typing import List, Optional
 from schemas import JobPosting, Resume, MatchResponse
 from services.retrieval import rank_jobs
 from services.ranking import rank_jobs_with_features, explain_ranking, load_config
+from services.rag import generate_rag_explanation
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -60,6 +63,10 @@ class JobRecommendation(BaseModel):
     matched_skills: List[str]
     gap_skills: Optional[List[str]] = None  # M3: gap skills
     features: Optional[RankingFeatures] = None  # M3: explainable features
+    # M4: RAG-generated explanations
+    explanation: Optional[str] = None
+    gap_analysis: Optional[str] = None
+    improvement_suggestions: Optional[str] = None
 
 
 class RecommendJobsResponse(BaseModel):
@@ -140,19 +147,24 @@ def load_jobs_from_jsonl(filepath: str = "data/jobs.jsonl") -> List[JobPosting]:
 @app.post("/recommend_jobs", response_model=RecommendJobsResponse)
 async def recommend_jobs(request: RecommendJobsRequest):
     """
-    Recommend top-k jobs for a given resume using explainable ranking (M3).
+    Recommend top-k jobs for a given resume using explainable ranking (M3) and RAG explanations (M4).
 
     This endpoint combines:
     - M2: Semantic similarity using embeddings
     - M3: Explainable ranking features (skill overlap, keyword bonus, gap penalty)
+    - M4: RAG-based explanations (evidence retrieval + LLM generation)
 
     The final ranking uses a weighted combination of features configured in YAML.
+    For each recommended job, RAG generates:
+    - Explanation: Why the job is a good fit (evidence-based)
+    - Gap Analysis: What skills/qualifications are missing
+    - Improvement Suggestions: Actionable steps to improve fit
 
     Args:
         request: RecommendJobsRequest containing resume and top_k parameter
 
     Returns:
-        RecommendJobsResponse with ranked job recommendations and explanation
+        RecommendJobsResponse with ranked job recommendations, features, and RAG explanations
     """
     # Load all jobs from JSONL file
     jobs = load_jobs_from_jsonl()
@@ -166,7 +178,7 @@ async def recommend_jobs(request: RecommendJobsRequest):
     # Step 3: Take top-k results
     top_k_results = ranked_results[:request.top_k]
 
-    # Step 4: Build recommendations with features
+    # Step 4: Build recommendations with features and RAG explanations (M4)
     recommendations = []
     for result in top_k_results:
         job = result["job"]
@@ -180,6 +192,25 @@ async def recommend_jobs(request: RecommendJobsRequest):
             final_score=result["final_score"]
         )
 
+        # M4: Generate RAG-based explanation for this job
+        try:
+            rag_result = generate_rag_explanation(
+                job=job,
+                resume=request.resume,
+                matched_skills=result["matched_skills"],
+                gap_skills=result["gap_skills"],
+                final_score=result["final_score"]
+            )
+            explanation = rag_result.get("explanation", "")
+            gap_analysis = rag_result.get("gap_analysis", "")
+            improvement_suggestions = rag_result.get("improvement_suggestions", "")
+        except Exception as e:
+            # Fallback if RAG fails (e.g., no API key set)
+            print(f"RAG explanation failed: {e}")
+            explanation = None
+            gap_analysis = None
+            improvement_suggestions = None
+
         recommendation = JobRecommendation(
             rank=result["rank"],
             title=job.title,
@@ -189,7 +220,11 @@ async def recommend_jobs(request: RecommendJobsRequest):
             similarity_score=result["embedding_score"],  # Keep for backward compatibility
             matched_skills=result["matched_skills"],
             gap_skills=result["gap_skills"],
-            features=features
+            features=features,
+            # M4: Add RAG explanations
+            explanation=explanation,
+            gap_analysis=gap_analysis,
+            improvement_suggestions=improvement_suggestions
         )
         recommendations.append(recommendation)
 

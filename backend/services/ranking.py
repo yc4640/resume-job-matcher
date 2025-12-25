@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Set
 from pathlib import Path
 
 from schemas import JobPosting, Resume
+from services.utils import merge_resume_skills, filter_soft_skills
 
 
 # Global variables for caching
@@ -145,6 +146,9 @@ def calculate_gap_penalty(
     """
     Calculate gap penalty score.
 
+    Soft skills are filtered out from gap calculation to avoid over-penalizing
+    candidates for missing non-technical skills.
+
     Args:
         resume_skills: Set of normalized resume skills
         job_skills: Set of normalized job skills
@@ -161,10 +165,17 @@ def calculate_gap_penalty(
     if not gaps:
         return 0.0
 
+    # Filter out soft skills from gaps (they shouldn't contribute to penalty)
+    gaps_list = list(gaps)
+    technical_gaps = filter_soft_skills(gaps_list)
+
+    if not technical_gaps:
+        return 0.0
+
     critical_set = {s.lower() for s in critical_skills}
     penalty_count = 0
 
-    for skill in gaps:
+    for skill in technical_gaps:
         if skill.lower() in critical_set:
             penalty_count += critical_multiplier
         else:
@@ -217,6 +228,9 @@ def rank_jobs_with_features(
     """
     Re-rank jobs using explainable features on top of embedding scores.
 
+    Auto-extracts skills from resume text (education/projects/experience) and merges
+    with user-provided skills to avoid overly strict matching.
+
     Args:
         resume: Resume object
         jobs_with_embedding_scores: List of dicts with 'job' and 'score' (embedding)
@@ -230,8 +244,15 @@ def rank_jobs_with_features(
     config = load_config(config_path)
     vocab = load_skills_vocabulary(vocab_path)
 
-    # Normalize resume skills
-    resume_skills_normalized = normalize_skills(resume.skills, vocab)
+    # === SKILLS AUTO-EXTRACT & MERGE ===
+    # Merge user-provided skills with auto-extracted skills from resume text
+    # This prevents false gaps when skills are mentioned in experience/projects
+    # but not explicitly listed in resume.skills
+    vocab_list = list(vocab)
+    merged_skills = merge_resume_skills(resume, vocab_list)
+
+    # Normalize merged skills (instead of just resume.skills)
+    resume_skills_normalized = normalize_skills(merged_skills, vocab)
 
     results = []
 

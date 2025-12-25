@@ -64,6 +64,8 @@ Hugging Face
 Text Mining
 Sentiment Analysis
 Named Entity Recognition
+NER
+Entity Extraction
 Question Answering
 
 # Recommendation & Search

@@ -10,3 +10,6 @@ numpy==1.24.3
 
 # Configuration and ranking dependencies for M3
 pyyaml==6.0.1
+
+# LLM dependencies for M4
+openai==1.12.0
