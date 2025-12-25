@@ -43,10 +43,12 @@ Scikit-learn
 XGBoost
 LightGBM
 Computer Vision
+CNN
 Natural Language Processing
 NLP
 Reinforcement Learning
 Transfer Learning
+GPU Programming
 
 # NLP & LLM
 Transformers
@@ -55,6 +57,7 @@ GPT
 Claude
 LLM
 Fine-tuning
+RLHF
 Prompt Engineering
 RAG
 Langchain
@@ -67,6 +70,8 @@ Named Entity Recognition
 NER
 Entity Extraction
 Question Answering
+Dialogue Systems
+Regex
 
 # Recommendation & Search
 Recommendation Systems
@@ -126,6 +131,8 @@ Jenkins
 CI/CD
 DevOps
 MLOps
+MLflow
+Monitoring
 
 # Distributed Systems
 Distributed Systems
@@ -139,6 +146,7 @@ gRPC
 GraphQL
 REST API
 WebSocket
+Ray
 
 # Graph & Network
 Graph Neural Networks
@@ -190,6 +198,8 @@ Design Patterns
 Object-Oriented Programming
 Functional Programming
 System Design
+Product Development
+Prototyping
 
 # Embeddings & Vectors
 Embeddings
