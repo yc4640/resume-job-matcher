@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M4 阶段，在可解释排序的基础上，增加了 RAG（检索增强生成）可解释层，为每个推荐职位生成基于证据的匹配分析。
+LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M5 阶段，在可解释排序和 RAG 解释的基础上，增加了完整的评估体系，使用 LLM 辅助生成弱监督标签，并通过 Precision@K 和 NDCG@K 指标量化系统性能。
 
 ### 当前功能
 
@@ -43,6 +43,16 @@ LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目
 - ✅ **技能自动提取与合并** - 从简历文本（education/projects/experience）中自动提取技能，避免过度严格的匹配
 - ✅ **软技能过滤** - 软技能（如 Communication、Leadership）缺失不计入 gap_penalty
 
+#### M5：评估与弱监督标签生成
+- ✅ 数据 ID 对齐 - jobs.jsonl 和 resumes.jsonl 添加 job_id、resume_id
+- ✅ LLM 辅助标签生成 - 使用 GPT-4o-mini 为 Top-15 推荐生成 0-3 分级标签
+- ✅ 弱监督标签（Weak Labels）- 快速生成大规模标注数据
+- ✅ 评估指标实现：
+  - Precision@K - 衡量推荐精准度
+  - NDCG@K - 衡量排序质量（考虑位置权重）
+- ✅ 人工校正模板 - labels_final.csv 支持人工审核和修正
+- ✅ 完整评估报告 - eval_report.md 详细说明数据、指标、结果解读
+
 #### 通用特性
 - ✅ RESTful API 设计
 - ✅ 自动生成的 API 文档（Swagger UI / ReDoc）
@@ -66,11 +76,19 @@ lm/
 │   │   └── utils.py            # 工具函数（技能提取与合并）(M4.1)
 │   ├── config/              # 配置文件 (M3 新增)
 │   │   └── ranking_config.yaml # 排序权重配置
+│   ├── eval/                # 评估模块 (M5 新增)
+│   │   ├── generate_labels.py  # LLM 辅助标签生成脚本
+│   │   ├── labels_suggested.jsonl  # LLM 生成的标签
+│   │   ├── labels_final.csv    # 人工校正模板
+│   │   ├── metrics.py          # 评估指标（Precision@K, NDCG@K）
+│   │   ├── run_eval.py         # 评估运行脚本
+│   │   ├── eval_results.json   # 评估结果
+│   │   └── eval_report.md      # 评估报告（中文）
 │   └── data/
 │       ├── sample_job.json        # 示例职位数据
 │       ├── sample_resume.json     # 示例简历数据
-│       ├── jobs.jsonl             # 批量职位数据（22条）
-│       ├── resumes.jsonl          # 批量简历数据（7条）
+│       ├── jobs.jsonl             # 批量职位数据（22条，含 job_id）(M5)
+│       ├── resumes.jsonl          # 批量简历数据（7条，含 resume_id）(M5)
 │       └── skills_vocabulary.txt  # 技能词表（180+ 技能）(M3)
 ├── .gitignore               # Git 忽略文件配置
 └── README.md                # 项目说明文档
@@ -1039,6 +1057,130 @@ gap_penalty:
 
 可根据需要添加新技能到词表。
 
+## M5 评估说明
+
+### 评估目标
+
+M5 引入了完整的评估体系，用于量化职位推荐系统的性能：
+- **数据对齐**：为 jobs.jsonl 和 resumes.jsonl 添加唯一 ID（job_id, resume_id）
+- **弱监督标签**：使用 LLM（GPT-4o-mini）为 Top-15 推荐生成 0-3 分级标签
+- **量化指标**：Precision@K 和 NDCG@K 衡量推荐质量
+- **人工校正**：支持人工审核和修正 LLM 生成的标签
+
+### 标签体系（0-3 分级）
+
+| 标签 | 名称 | 定义 |
+|------|------|------|
+| **0** | 不匹配 | 明显不相关或方向不一致 |
+| **1** | 弱匹配 | 有少量相关点，但缺少关键技能或方向偏差 |
+| **2** | 中等匹配 | 方向一致，部分技能满足，存在一些技能差距 |
+| **3** | 强匹配 | 方向高度一致，关键技能覆盖率高，技能差距少 |
+
+**相关性阈值**：标签 ≥ 2（中等匹配或强匹配）被视为"相关职位"
+
+### 评估指标
+
+**Precision@K**（精确率）：
+- 定义：Top-K 推荐中相关职位的比例
+- 公式：`Precision@K = (Top-K 中相关职位数) / K`
+- 值域：0.0 - 1.0，越高越好
+
+**NDCG@K**（归一化折损累积增益）：
+- 定义：考虑排序位置的质量评分
+- 公式：`NDCG@K = DCG@K / IDCG@K`
+- 值域：0.0 - 1.0，越高越好
+- 特点：排在前面的职位权重更高
+
+### 如何运行评估
+
+#### 1. 生成 LLM 标签
+
+```bash
+cd backend/eval
+python generate_labels.py
+```
+
+这将生成：
+- `labels_suggested.jsonl` - LLM 生成的标签（JSONL 格式）
+- `labels_final.csv` - 人工校正模板（CSV 格式）
+
+#### 2. 人工校正（可选但推荐）
+
+打开 `backend/eval/labels_final.csv`，在 `final_label` 列填入校正后的标签：
+
+```csv
+resume_id,job_id,suggested_label,final_label,confidence,evidence_1,evidence_2,notes
+resume_001,job_001,3,3,0.95,"Resume: Ph.D. in RecSys","Job: Senior ML Engineer","..."
+resume_001,job_002,2,1,0.70,"...","...","人工修正：技能差距较大，降为弱匹配"
+```
+
+- 留空表示接受 LLM 标签
+- 填入 0-3 表示人工修正
+
+#### 3. 运行评估
+
+```bash
+cd backend/eval
+python run_eval.py
+```
+
+评估结果将保存到：
+- `eval_results.json` - 详细结果（JSON 格式）
+- 控制台输出汇总指标
+
+#### 4. 查看评估报告
+
+```bash
+cat backend/eval/eval_report.md
+```
+
+报告包含：
+- 数据规模与分布
+- 标签体系说明
+- 评估指标定义
+- 结果解读指南
+- Weak Labels 说明与改进建议
+
+### 评估数据规模
+
+当前评估基于：
+- **7 份简历** × **Top-15 职位** = **105 个标注对**
+- **标签来源**：LLM（GPT-4o-mini）独立生成（无信息泄漏）
+- **平均置信度**：0.70
+- **标签分布**：47.6% 弱匹配，31.4% 中等匹配，21.0% 强匹配
+
+### 评估公正性保证
+
+**防止评估偏置（Label Leakage Prevention）**：
+
+为避免评估偏置，LLM 标注阶段不暴露任何系统排序或打分信息，所有标签均基于原始 JD 与 Resume 独立生成。
+
+具体措施：
+- ✅ LLM 仅接收原始简历和职位描述文本
+- ✅ 不提供系统计算的 matched_skills、gap_skills、final_score
+- ✅ LLM 被明确告知其角色是"独立的人工评估者"
+- ✅ 确保标签反映真实判断，而非系统输出的复述
+
+### Weak Labels 说明
+
+**什么是 Weak Labels？**
+- LLM 自动生成的标签，非人工标注的金标准
+- 优势：快速、低成本、可扩展
+- 局限：准确性不如人工，建议抽查并修正
+
+**推荐流程：**
+1. LLM 快速生成 suggested_label（已完成）
+2. 人工抽查 20-30% 并修正 final_label
+3. 重新运行评估获得更准确的结果
+
+### 数据 ID 说明
+
+**为什么添加 job_id 和 resume_id？**
+- 仅用于评估对齐，不影响推荐逻辑
+- job_id: job_001, job_002, ..., job_022
+- resume_id: resume_001, resume_002, ..., resume_007
+- 在 `/recommend_jobs` 接口返回的 JobRecommendation 中包含 job_id
+
 ## 下一步计划
 
 后续 Milestone 将实现：
@@ -1046,6 +1188,7 @@ gap_penalty:
 - ✅ ~~批量匹配和排序功能~~（M2 已完成）
 - ✅ ~~可解释的轻量排序层~~（M3 已完成）
 - ✅ ~~集成 LLM 进行更智能的匹配分析和个性化建议~~（M4 已完成）
+- ✅ ~~评估体系与弱监督标签生成~~（M5 已完成）
 - 数据库集成存储职位和简历数据
 - 用户认证和授权系统
 - 缓存优化（Redis）

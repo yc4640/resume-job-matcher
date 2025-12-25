@@ -16,6 +16,7 @@ class JobPosting(BaseModel):
     company: Optional[str] = None
     location: Optional[str] = None
     level: Optional[str] = None
+    job_id: Optional[str] = None  # M5: for evaluation alignment
 
 
 class Resume(BaseModel):
@@ -24,6 +25,7 @@ class Resume(BaseModel):
     projects: str
     skills: List[str]
     experience: str
+    resume_id: Optional[str] = None  # M5: for evaluation alignment
 
 
 class MatchResponse(BaseModel):

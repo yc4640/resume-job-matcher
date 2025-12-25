@@ -55,6 +55,7 @@ class RankingFeatures(BaseModel):
 class JobRecommendation(BaseModel):
     """Single job recommendation with similarity score and matched skills"""
     rank: int
+    job_id: Optional[str] = None  # M5: for evaluation alignment
     title: str
     company: Optional[str] = None
     location: Optional[str] = None
@@ -213,6 +214,7 @@ async def recommend_jobs(request: RecommendJobsRequest):
 
         recommendation = JobRecommendation(
             rank=result["rank"],
+            job_id=job.job_id,  # M5: include job_id for evaluation alignment
             title=job.title,
             company=job.company,
             location=job.location,
