@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M5 阶段，在可解释排序和 RAG 解释的基础上，增加了完整的评估体系，使用 LLM 辅助生成弱监督标签，并通过 Precision@K 和 NDCG@K 指标量化系统性能。
+LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M6 阶段，在可解释排序、RAG 解释和评估体系的基础上，新增了 Streamlit 交互界面，提供开箱即用的 Web Demo，让用户无需编写代码即可体验完整的职位匹配和解释功能。
 
 ### 当前功能
 
@@ -53,6 +53,16 @@ LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目
 - ✅ 人工校正模板 - labels_final.csv 支持人工审核和修正
 - ✅ 完整评估报告 - eval_report.md 详细说明数据、指标、结果解读
 
+#### M6：Streamlit 交互界面
+- ✅ Streamlit Web 界面 - 轻量级交互式前端
+- ✅ 多种简历输入方式 - 文本框输入或上传 TXT 文件
+- ✅ 职位选择 - 从 jobs.jsonl 数据库选择
+- ✅ Top-K 参数配置 - 灵活调整推荐数量
+- ✅ 一键匹配 - 调用后端 `/recommend_jobs` 接口
+- ✅ 可视化结果展示 - 职位信息、匹配分数、技能对比
+- ✅ 详细解释生成 - 点击按钮调用 `/explain` 接口
+- ✅ 后端状态监控 - 实时检查后端服务可用性
+
 #### 通用特性
 - ✅ RESTful API 设计
 - ✅ 自动生成的 API 文档（Swagger UI / ReDoc）
@@ -90,6 +100,9 @@ lm/
 │       ├── jobs.jsonl             # 批量职位数据（22条，含 job_id）(M5)
 │       ├── resumes.jsonl          # 批量简历数据（7条，含 resume_id）(M5)
 │       └── skills_vocabulary.txt  # 技能词表（180+ 技能）(M3)
+├── frontend/                # 前端界面 (M6 新增)
+│   ├── streamlit_app.py     # Streamlit 交互界面
+│   └── requirements.txt     # 前端依赖（Streamlit, requests）
 ├── .gitignore               # Git 忽略文件配置
 └── README.md                # 项目说明文档
 ```
@@ -1181,6 +1194,190 @@ cat backend/eval/eval_report.md
 - resume_id: resume_001, resume_002, ..., resume_007
 - 在 `/recommend_jobs` 接口返回的 JobRecommendation 中包含 job_id
 
+## M6：一键运行 Demo（Streamlit 交互界面）
+
+### 功能概述
+
+M6 提供了一个基于 Streamlit 的交互式 Web 界面，让您无需手动编写代码即可体验完整的职位匹配功能：
+- 📄 多种简历输入方式（文本框输入或上传 TXT 文件）
+- 💼 职位选择（从 jobs.jsonl 数据库选择）
+- 🎯 Top-K 参数配置（推荐职位数量）
+- 🚀 一键匹配并展示结果（包括匹配分数、匹配技能、技能差距）
+- 💡 详细解释（点击按钮查看 RAG 生成的匹配解释、差距分析、提升建议）
+
+### 一键运行步骤
+
+#### 前置条件
+
+确保已完成环境配置和依赖安装（参考上文"如何运行"部分）。
+
+#### 安装 Streamlit
+
+```bash
+# 方式一：使用 requirements.txt（推荐）
+pip install -r frontend/requirements.txt
+
+# 方式二：手动安装
+pip install streamlit requests
+```
+
+#### 启动后端服务
+
+在**第一个终端**中启动 FastAPI 后端：
+
+```bash
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+后端启动后，API 将运行在 http://localhost:8000
+
+#### 启动前端界面
+
+在**第二个终端**中启动 Streamlit 前端：
+
+```bash
+# 确保在项目根目录
+streamlit run frontend/streamlit_app.py
+```
+
+前端启动后，会自动打开浏览器，访问地址：http://localhost:8501
+
+**如果浏览器没有自动打开**，请手动访问 http://localhost:8501
+
+### 使用指南
+
+#### 1. 输入简历
+
+**方式一：手动输入**
+- 选择"Manual Text Input"
+- 在文本框中输入简历内容
+- 建议按照以下格式组织（系统会自动解析）：
+  ```
+  Education
+  Bachelor of Science in Computer Science, MIT, 2020
+
+  Projects
+  Built a recommendation system using collaborative filtering and deep learning
+
+  Skills
+  Python, TensorFlow, PyTorch, Machine Learning, Deep Learning, NLP
+
+  Experience
+  Software Engineer at Tech Corp (2020-2023)
+  - Developed ML models for user personalization
+  - Improved recommendation accuracy by 25%
+  ```
+
+**方式二：上传文件**
+- 选择"Upload TXT File"
+- 点击"Browse files"上传 TXT 格式的简历文件
+
+#### 2. 选择职位（可选）
+
+- 从下拉列表中选择职位
+  - 列表显示格式：`job_id: 职位名称`
+  - 选择"-- None (match all jobs) --"表示匹配所有职位
+  - 点击"View Job Details"可查看职位详情
+
+#### 3. 设置匹配参数
+
+- 使用滑块调整 **Top-K**（推荐职位数量）
+- 范围：1-20，默认值：5
+
+#### 4. 运行匹配
+
+- 点击 **"🚀 Run Match"** 按钮
+- 系统将：
+  1. 解析简历内容
+  2. 调用后端 `/recommend_jobs` 接口
+  3. 展示 Top-K 匹配职位
+
+#### 5. 查看结果
+
+匹配结果将显示每个职位的：
+- **职位信息**：标题、公司、地点、级别
+- **匹配分数**：语义相似度评分（百分比）
+- **匹配技能**：简历与职位要求的技能交集
+- **技能差距**：职位要求但简历缺失的技能
+
+#### 6. 查看详细解释
+
+- 点击任意职位下的 **"💡 Explain Match"** 按钮
+- 系统将调用 `/explain` 接口生成详细解释
+- 展开的解释包含：
+  - **Why this job matches**：基于证据的匹配原因
+  - **Gap Analysis**：详细的技能差距分析
+  - **Improvement Suggestions**：可行的提升建议
+
+### 界面功能说明
+
+#### 侧边栏
+
+- **About**：系统简介和使用说明
+- **Backend Status**：实时检查后端服务状态
+  - 绿色：后端正常运行
+  - 红色：后端未启动（请先启动后端服务）
+
+#### 主界面布局
+
+- **左侧列**：简历输入区域
+- **右侧列**：职位选择区域（可选）
+- **底部**：匹配参数和运行按钮
+- **结果区**：Top-K 职位卡片（按匹配分数排序）
+
+### 示例数据
+
+您可以使用以下示例数据快速测试：
+
+**示例简历（NLP 方向）**：
+```
+Education
+Master of Science in Natural Language Processing, Carnegie Mellon University, 2019-2021
+
+Projects
+Built conversational AI system using GPT-4 and RAG, serving 500K+ users
+Developed multilingual NER system supporting 15 languages using BERT
+
+Skills
+NLP, LLM, Transformers, BERT, GPT, Claude, Prompt Engineering, RAG, Fine-tuning, Python, PyTorch, FastAPI
+
+Experience
+NLP Engineer at AI Startup (2021-2024): Built LLM-powered products, implemented RAG systems, fine-tuned models for domain adaptation
+```
+
+然后：
+1. 设置 Top-K = 5
+2. 点击"Run Match"
+3. 查看推荐的 NLP 相关职位（如"NLP Engineer - Conversational AI"、"LLM Engineer"等）
+4. 点击"Explain Match"查看详细匹配解释
+
+### 技术栈
+
+- **前端框架**：Streamlit（轻量级 Python Web 框架）
+- **HTTP 客户端**：requests
+- **后端 API**：FastAPI（详见 M1-M5）
+
+### 故障排除
+
+**问题：点击"Run Match"后提示"Backend is not running"**
+- 解决：确保后端服务已启动（`uvicorn main:app --reload`）
+- 检查后端是否运行在 http://localhost:8000
+- 查看侧边栏"Backend Status"状态
+
+**问题：解释生成失败**
+- 原因：可能是 OpenAI API Key 未配置或 RAG 服务异常
+- 解决：检查 `.env` 文件中的 `OPENAI_API_KEY` 配置（参考 M4 配置说明）
+- 说明：即使 RAG 失败，匹配功能仍可正常使用
+
+**问题：简历解析不准确**
+- 解决：建议在简历中明确使用"Education"、"Projects"、"Skills"、"Experience"等节标题
+- 技能建议使用逗号分隔（如"Python, Machine Learning, NLP"）
+
+**问题：找不到 jobs.jsonl 文件**
+- 解决：确保 `backend/data/jobs.jsonl` 文件存在
+- 检查 Streamlit 是否从项目根目录运行（`streamlit run frontend/streamlit_app.py`）
+
 ## 下一步计划
 
 后续 Milestone 将实现：
@@ -1189,6 +1386,7 @@ cat backend/eval/eval_report.md
 - ✅ ~~可解释的轻量排序层~~（M3 已完成）
 - ✅ ~~集成 LLM 进行更智能的匹配分析和个性化建议~~（M4 已完成）
 - ✅ ~~评估体系与弱监督标签生成~~（M5 已完成）
+- ✅ ~~Streamlit 交互界面 Demo~~（M6 已完成）
 - 数据库集成存储职位和简历数据
 - 用户认证和授权系统
 - 缓存优化（Redis）

@@ -77,6 +77,19 @@ class RecommendJobsResponse(BaseModel):
     explanation: Optional[str] = None  # M3: explanation for top result
 
 
+class ExplainRequest(BaseModel):
+    """Request model for explain endpoint"""
+    resume: Resume
+    job_id: str
+
+
+class ExplainResponse(BaseModel):
+    """Response model for explain endpoint"""
+    explanation: str
+    gap_analysis: Optional[str] = None
+    improvement_suggestions: Optional[str] = None
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """
@@ -240,6 +253,72 @@ async def recommend_jobs(request: RecommendJobsRequest):
         recommendations=recommendations,
         total_jobs_searched=len(jobs),
         explanation=explanation
+    )
+
+
+@app.post("/explain", response_model=ExplainResponse)
+async def explain(request: ExplainRequest):
+    """
+    Generate detailed explanation for a specific job-resume match.
+
+    This endpoint provides RAG-based explanations for why a job matches
+    (or doesn't match) a given resume, including gap analysis and improvement suggestions.
+
+    Args:
+        request: ExplainRequest containing resume and job_id
+
+    Returns:
+        ExplainResponse with explanation, gap_analysis, and improvement_suggestions
+    """
+    # Load all jobs and find the requested job
+    jobs = load_jobs_from_jsonl()
+    target_job = None
+    for job in jobs:
+        if job.job_id == request.job_id:
+            target_job = job
+            break
+
+    if not target_job:
+        return ExplainResponse(
+            explanation=f"Job with ID {request.job_id} not found.",
+            gap_analysis=None,
+            improvement_suggestions=None
+        )
+
+    # Calculate matched and gap skills
+    job_skills_set = set(target_job.skills)
+    resume_skills_set = set(request.resume.skills)
+    matched_skills = list(job_skills_set & resume_skills_set)
+    gap_skills = list(job_skills_set - resume_skills_set)
+
+    # Calculate a basic score for the RAG explanation
+    if len(job_skills_set) > 0:
+        basic_score = len(matched_skills) / len(job_skills_set)
+    else:
+        basic_score = 0.0
+
+    # Generate RAG-based explanation
+    try:
+        rag_result = generate_rag_explanation(
+            job=target_job,
+            resume=request.resume,
+            matched_skills=matched_skills,
+            gap_skills=gap_skills,
+            final_score=basic_score
+        )
+        explanation = rag_result.get("explanation", "No explanation available.")
+        gap_analysis = rag_result.get("gap_analysis", "")
+        improvement_suggestions = rag_result.get("improvement_suggestions", "")
+    except Exception as e:
+        # Fallback if RAG fails
+        explanation = f"Unable to generate explanation: {str(e)}"
+        gap_analysis = None
+        improvement_suggestions = None
+
+    return ExplainResponse(
+        explanation=explanation,
+        gap_analysis=gap_analysis,
+        improvement_suggestions=improvement_suggestions
     )
 
 
