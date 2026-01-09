@@ -58,6 +58,43 @@ def load_skills_vocabulary(vocab_path: str = "data/skills_vocabulary.txt") -> Se
     return _skills_vocab
 
 
+def expand_vocab_with_job_skills(jobs: List[Any], vocab: Set[str]) -> Set[str]:
+    """
+    Expand vocabulary with all skills from jobs to ensure complete gap detection.
+
+    This ensures that job skills not in the predefined vocab are still considered
+    when calculating gap_skills, preventing incomplete gap detection.
+
+    Args:
+        jobs: List of JobPosting objects
+        vocab: Current vocabulary set
+
+    Returns:
+        Set[str]: Expanded vocabulary including all job skills
+    """
+    expanded_vocab = vocab.copy()
+
+    # Collect all unique skills from all jobs (case-preserving)
+    for job in jobs:
+        for skill in job.skills:
+            skill_stripped = skill.strip()
+            if skill_stripped:
+                # Check if skill already exists (case-insensitive)
+                skill_lower = skill_stripped.lower()
+                existing_match = None
+
+                for existing_skill in expanded_vocab:
+                    if existing_skill.lower() == skill_lower:
+                        existing_match = existing_skill
+                        break
+
+                # If not found in vocab, add the job's original form
+                if not existing_match:
+                    expanded_vocab.add(skill_stripped)
+
+    return expanded_vocab
+
+
 def normalize_skills(skills: List[str], vocab: Set[str]) -> Set[str]:
     """
     Normalize skills against vocabulary.
@@ -243,6 +280,15 @@ def rank_jobs_with_features(
     # Load config and vocabulary
     config = load_config(config_path)
     vocab = load_skills_vocabulary(vocab_path)
+
+    # === EXPAND VOCAB WITH JOB SKILLS ===
+    # CRITICAL: Add all job skills to vocab BEFORE normalization
+    # This ensures gap_skills calculation is complete and consistent
+    # Problem: If job skills are not in vocab, they get ignored during normalize_skills(),
+    #          resulting in incomplete gap_skills that don't match what RAG/Explain shows
+    # Solution: Scan all jobs and add their skills to vocab first
+    all_jobs = [item['job'] for item in jobs_with_embedding_scores]
+    vocab = expand_vocab_with_job_skills(all_jobs, vocab)
 
     # === SKILLS AUTO-EXTRACT & MERGE ===
     # Merge user-provided skills with auto-extracted skills from resume text

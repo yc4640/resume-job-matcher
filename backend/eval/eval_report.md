@@ -1,355 +1,63 @@
-# M5 评估报告：职位推荐系统评估
-
-## 1. 数据规模
-
-- **简历数量**: 7 份
-- **职位数量**: 22 个
-- **标注对数**: 105 对（每份简历标注 Top-15 职位）
-- **标注来源**: LLM 辅助生成（GPT-4o-mini）
-
-### 数据集概况
-
-```
-backend/data/
-├── resumes.jsonl (7 份简历，已添加 resume_id)
-└── jobs.jsonl (22 个职位，已添加 job_id)
-```
-
-候选人画像分布（职业背景）：
-- 推荐系统专家（Ph.D.）
-- NLP 工程师（硕士）
-- 数据工程师
-- 后端工程师
-- 数据科学家（初级）
-- LLM/AI 产品工程师
-- 图神经网络/机器学习工程师
-
-职位类型分布：
-- 推荐系统/排序（4 个）
-- NLP/LLM（5 个）
-- 搜索（4 个）
-- 后端开发（2 个）
-- 数据科学/工程（4 个）
-- 机器学习基础设施（3 个）
-
-## 2. 评估公正性保证
-
-**防止评估偏置（Label Leakage Prevention）**：
-
-为避免评估偏置，LLM 标注阶段不暴露任何系统排序或打分信息，所有标签均基于原始 JD 与 Resume 独立生成。
-
-具体措施：
-- ✅ LLM 仅接收原始简历和职位描述文本
-- ✅ 不提供系统计算的 matched_skills、gap_skills
-- ✅ 不提供系统的 final_score 或排名位置
-- ✅ LLM 被明确告知其角色是"独立的人工评估者"，不知道系统如何排序
-- ✅ 确保标签反映真实的人工判断，而非系统输出的简单复述
-
-这种设计确保了评估的独立性和公正性，使得评估结果能够真实反映系统推荐质量，而不是系统对自身输出的"自我验证"。
-
-## 3. 标签体系
-
-### 标签定义（0-3 分级）
-
-| 标签 | 名称 | 定义 | 解释 |
-|------|------|------|------|
-| **0** | 不匹配 | No match | 明显不相关或方向不一致 |
-| **1** | 弱匹配 | Weak match | 有少量相关点，但缺少关键技能或方向偏差 |
-| **2** | 中等匹配 | Medium match | 方向一致，部分技能满足，存在一些技能差距 |
-| **3** | 强匹配 | Strong match | 方向高度一致，关键技能覆盖率高，技能差距少 |
-
-### 相关性阈值
-
-在评估指标中，我们将 **标签 ≥ 2（中等匹配或强匹配）** 定义为"相关职位"。
-
-## 4. 标签分布（LLM 生成）
-
-基于 GPT-4o-mini 独立生成的 105 个标签分布如下：
-
-| 标签 | 数量 | 占比 |
-|------|------|------|
-| 0 - 不匹配 | 0 | 0.0% |
-| 1 - 弱匹配 | 50 | 47.6% |
-| 2 - 中等匹配 | 33 | 31.4% |
-| 3 - 强匹配 | 22 | 21.0% |
-
-**平均置信度**: 0.70
-
-### 分布分析
-
-- LLM 独立判断后呈现更均衡的分布，47.6% 弱匹配，52.4% 中等/强匹配
-- 没有"完全不匹配"的情况，说明系统召回的 Top-15 职位都有一定相关性
-- 强匹配（Label 3）占 21.0%，平均每份简历有 3 个高度匹配的职位
-- 相关职位（Label ≥ 2）占 52.4%，平均每份简历有 7-8 个相关职位
-- 相比有信息泄漏的版本，独立评估给出了更多的高分标签，反映了LLM的真实判断而非对系统评分的复述
-
-## 5. 评估指标
-
-### Precision@K（精确率）
-
-**定义**: Top-K 推荐中相关职位的比例
-
-```
-Precision@K = (Top-K 中相关职位数) / K
-```
-
-**相关职位**: 标签 ≥ 2（中等匹配或强匹配）
-
-**解释**:
-- 值域：0.0 - 1.0
-- 越高越好
-- 衡量推荐的精准度
-
-### NDCG@K（归一化折损累积增益）
-
-**定义**: 考虑排序位置的质量评分
-
-```
-NDCG@K = DCG@K / IDCG@K
-
-DCG@K = Σ (rel_i / log2(i + 1))  for i in 1..K
-IDCG@K = 理想排序下的 DCG@K
-```
-
-**解释**:
-- 值域：0.0 - 1.0
-- 越高越好
-- 考虑了排序位置的影响（排在前面的职位权重更高）
-- 使用标签 0-3 作为相关性分数
-
-## 6. 评估结果
-
-> **注意**: 以下结果基于 LLM 生成的 suggested_label。建议人工审核并修正 `labels_final.csv` 中的 `final_label` 列，然后重新运行评估以获得更准确的结果。
-
-### 运行评估
-
-```bash
-cd backend/eval
-python run_eval.py
-```
-
-### 结果示例
-
-**Precision@K**:
-```
-Precision@5:   0.XXXX
-Precision@10:  0.XXXX
-Precision@15:  0.XXXX
-```
-
-**NDCG@K**:
-```
-NDCG@5:        0.XXXX
-NDCG@10:       0.XXXX
-NDCG@15:       0.XXXX
-```
-
-### 结果解读指南
-
-#### Precision@K 解读
-
-| 数值范围 | 评级 | 说明 |
-|---------|------|------|
-| 0.4 - 1.0 | 优秀 | Top-K 中 40% 以上是相关职位 |
-| 0.2 - 0.4 | 良好 | Top-K 中 20-40% 是相关职位 |
-| 0.1 - 0.2 | 中等 | Top-K 中 10-20% 是相关职位 |
-| 0.0 - 0.1 | 较差 | Top-K 中不到 10% 是相关职位 |
-
-#### NDCG@K 解读
-
-| 数值范围 | 评级 | 说明 |
-|---------|------|------|
-| 0.5 - 1.0 | 优秀 | 排序质量高，相关职位排名靠前 |
-| 0.3 - 0.5 | 良好 | 排序质量中等偏上 |
-| 0.1 - 0.3 | 中等 | 排序质量一般 |
-| 0.0 - 0.1 | 较差 | 排序质量差，相关职位排名靠后 |
-
-## 7. Effect of Label Leakage Removal
-
-### 背景
-
-在初始版本中，LLM 标签生成阶段接收了系统的匹配分析结果（matched_skills、gap_skills、final_score），导致潜在的信息泄漏。修正后的版本仅基于原始 Resume 和 Job 文本独立生成标签，确保评估公正性。
-
-### 修正前后指标对比
-
-| 指标 | 修正前（存在 leakage） | 修正后（无 leakage） | 变化                |
-|------|----------------------|----------------|-------------------|
-| **Precision@5** | 0.714 | 0.857          | +0.143 (+20.0%)   |
-| **Precision@10** | 0.386 | 0.643          | +0.257 (+66.6%)   |
-| **Precision@15** | 0.257 | 0.514          | +0.257 (+100 .0%) |
-| **NDCG@5** | 0.961 | 0.942          | -0.019 (-2.0%)    |
-| **NDCG@10** | 0.979 | 0.944          | -0.035 (-3.6%)    |
-| **NDCG@15** | 0.982 | 0.956          | -0.026 (-2.6%)    |
-
-### 结果分析
-
-去除信息泄漏后，Precision@K 指标显著提升，这反映了 LLM 在独立评估时给出了更多的高质量匹配标签（Label 2/3）。修正前的标签分布过于保守（74.3% 为弱匹配），是因为 LLM 倾向于复述系统已经给出的较低评分；修正后的分布更均衡（47.6% 弱匹配，52.4% 中等/强匹配），更符合真实的匹配质量。
-
-NDCG@K 略有下降但仍保持在高水平（>0.93），说明系统的排序质量依然良好。NDCG 的变化主要源于标签分布的调整，而非排序能力的下降。修正后的结果更可信，能够真实反映推荐系统的质量，而不是系统对自身输出的"自我验证"。这为后续的算法优化提供了更可靠的评估基准。
-
-## 8. Weak Labels 说明
-
-### 什么是 Weak Labels？
-
-本项目使用的标签为 **弱监督标签（Weak Labels）**，即通过 LLM（GPT-4o-mini）自动生成的标签，而非人工标注的金标准（Gold Standard）。
-
-### Weak Labels 的特点
-
-**优势**:
-- ✅ 快速生成：自动化标注，无需大量人工
-- ✅ 成本低廉：无需雇佣标注团队
-- ✅ 可扩展性强：可轻松为数千对 (resume, job) 生成标签
-- ✅ 基于证据：LLM 标注时会引用简历和职位描述的具体内容
-
-**局限**:
-- ❌ 准确性不如人工标注：LLM 可能误判匹配度
-- ❌ 存在偏差：LLM 可能倾向于保守或激进标注
-- ❌ 缺乏领域专业性：无法完全替代招聘专家的判断
-- ❌ 需要人工校正：建议抽查并修正部分标签
-
-### 如何使用 Weak Labels？
-
-**1. 直接使用（快速评估）**:
-- 适用场景：快速验证系统性能、迭代算法
-- 使用 `suggested_label`（LLM 生成）直接评估
-- 优点：快速、零人工成本
-- 缺点：准确性有限
-
-**2. 人工校正（推荐）**:
-- 适用场景：正式评估、发布系统前
-- 流程：
-  1. LLM 生成 `suggested_label`（已完成）
-  2. 人工审核并修正 `labels_final.csv` 中的 `final_label` 列
-  3. 重新运行评估脚本 `run_eval.py`
-- 优点：准确性高、可信度强
-- 建议抽查比例：至少 20-30% 的标签
-
-**3. 人工抽查流程**:
-
-打开 `backend/eval/labels_final.csv`：
-
-```csv
-resume_id,job_id,suggested_label,final_label,confidence,evidence_1,evidence_2,notes
-resume_001,job_001,3,,0.95,"Resume: Ph.D. in Recommendation Systems","Job: Senior ML Engineer - RecSys","Strong alignment..."
-resume_001,job_002,2,,0.70,...
-```
-
-- 检查 `suggested_label` 是否合理
-- 在 `final_label` 列填入校正后的标签（0-3）
-- 留空表示接受 LLM 标签
-- 重点抽查：
-  - 置信度低的标签（confidence < 0.6）
-  - 边界情况（Label 1 和 2 之间）
-  - 关键简历的匹配（如核心候选人）
-
-## 9. 可解释性评分（预留）
-
-为了进一步评估系统的可解释性，可以对推荐结果进行人工评分：
-
-### Likert 1-5 评分标准
-
-**评分维度**：
-1. **解释质量**（Explanation Quality）：解释是否清晰、有说服力？
-2. **证据相关性**（Evidence Relevance）：引用的证据是否相关？
-3. **差距分析准确性**（Gap Analysis Accuracy）：技能差距识别是否准确？
-4. **建议实用性**（Suggestion Usefulness）：提升建议是否可行？
-
-**评分标准**：
-- **5分 (非常好)**: 解释清晰、证据充分、分析准确、建议实用
-- **4分 (好)**: 解释合理、证据相关、分析基本准确、建议可行
-- **3分 (中等)**: 解释一般、证据部分相关、分析有遗漏、建议泛泛
-- **2分 (差)**: 解释模糊、证据不相关、分析错误、建议无用
-- **1分 (非常差)**: 完全无意义或错误的解释
-
-### 可解释性评分模板
-
-可创建 `backend/eval/explain_rating.csv` 进行人工评分：
-
-```csv
-resume_id,job_id,rank,explanation_quality,evidence_relevance,gap_accuracy,suggestion_usefulness,notes
-resume_001,job_001,1,5,5,4,4,"解释很清晰，证据充分"
-resume_001,job_002,2,4,4,3,3,"解释合理，但建议较泛"
-...
-```
-
-## 10. 总结与建议
-
-### 当前系统评估总结
-
-1. **数据规模**: 7 份简历 × 22 个职位，共 105 对标注
-2. **标注质量**: LLM 辅助标注，平均置信度 0.62，建议人工校正
-3. **标签分布**: 74.3% 弱匹配，25.7% 中等/强匹配
-4. **评估指标**: Precision@K 和 NDCG@K 用于量化推荐质量
-
-### 改进建议
-
-**短期（1-2 周）**:
-- ✅ 人工抽查并修正 20-30% 的标签
-- ✅ 重新运行评估以获得更准确的基准
-- ✅ 分析各类简历的推荐质量（NLP vs 后端 vs 数据科学）
-
-**中期（1-2 月）**:
-- 扩展数据集：增加简历和职位数量（目标：50+ 简历，100+ 职位）
-- 多标注员校准：邀请 2-3 名招聘专家标注部分数据，计算标注一致性
-- A/B 测试：对比不同排序策略（调整 ranking_config.yaml 权重）
-
-**长期（3+ 月）**:
-- 在线评估：在实际招聘场景中收集用户反馈（点击率、申请率）
-- 迭代改进：根据用户反馈调整排序模型和可解释层
-- 领域适配：针对不同行业（如医疗、金融）训练专用模型
-
-## 11. 附录
-
-### 文件说明
-
-```
-backend/eval/
-├── generate_labels.py       # 生成 LLM 标签脚本
-├── labels_suggested.jsonl   # LLM 生成的标签（JSONL 格式）
-├── labels_final.csv         # 人工校正模板（CSV 格式）
-├── metrics.py               # 评估指标实现（Precision@K, NDCG@K）
-├── run_eval.py              # 评估脚本
-├── eval_results.json        # 评估结果（JSON 格式）
-└── eval_report.md           # 本报告
-```
-
-### 运行命令
-
-```bash
-# 1. 生成标签（LLM 辅助）
-cd backend/eval
-python generate_labels.py
-
-# 2. 人工校正标签（可选但推荐）
-# 编辑 labels_final.csv，填写 final_label 列
-
-# 3. 运行评估
-python run_eval.py
-
-# 4. 查看结果
-cat eval_results.json
-```
-
-### 环境要求
-
-- Python 3.8+
-- OpenAI API Key（用于 LLM 标注）
-- 依赖包：见 `backend/requirements.txt`
-
-### 引用
-
-如需引用本评估方法，请参考：
-
-> LM Match Service - M5 Evaluation Report
->
-> 使用 LLM 辅助弱监督标签生成与 Precision@K/NDCG@K 评估指标
->
-> 标签体系：0-3 分级（不匹配、弱匹配、中等匹配、强匹配）
->
-> 评估对象：7 份简历 × Top-15 职位推荐，共 105 对
-
----
-
-**报告生成日期**: 2024-12-25
-**报告版本**: M5-v1.0
-**联系方式**: 见 README.md
+# Evaluation Report: LOOCV + Ablation Study
+
+**Generated:** 2026-01-08T22:08:00.066567
+**Evaluation Method:** Leave-One-Out Cross-Validation (LOOCV)
+**Number of Folds:** 15
+**Number of Jobs:** 50
+
+## Weak Labels
+
+This evaluation uses weak labels (1-5 scale) generated by LLM:
+- **Label 1:** Not a match
+- **Label 2:** Weak match
+- **Label 3:** Partial match
+- **Label 4:** Good match (relevant threshold)
+- **Label 5:** Strong match
+
+Labels are generated ONLY from resume and job content (no system bias).
+
+## Evaluation Methodology
+
+**LOOCV (Leave-One-Out Cross-Validation):**
+- For each resume:
+  - Use it as test set
+  - Train on all other resumes
+  - Evaluate ranking on ALL jobs for this resume (not just top-15)
+
+**Metrics:**
+- **NDCG@5/10:** Normalized Discounted Cumulative Gain (ranking quality)
+- **Precision@5/10:** Fraction of relevant jobs (label ≥ 4) in top-K
+
+## Ablation Study Results
+
+| Variant | NDCG@5 | NDCG@10 | Precision@5 | Precision@10 |
+|---------|--------|---------|-------------|--------------|
+| embedding_only       | 0.891±0.094 | 0.891±0.062 | 0.640±0.352 | 0.467±0.265 |
+| heuristic            | 0.905±0.097 | 0.893±0.067 | 0.640±0.320 | 0.453±0.242 |
+| ltr_logreg           | 0.907±0.086 | 0.900±0.057 | 0.653±0.322 | 0.473±0.252 |
+
+## Interpretation
+
+**Variants:**
+- **embedding_only:** Baseline using only semantic similarity
+- **heuristic:** Current system with weighted features (embedding + skill overlap + keyword bonus - gap penalty)
+- **ltr_logreg:** Pairwise Learning to Rank with Logistic Regression
+- **ltr_logreg_fallback:** LTR fell back to heuristic (insufficient training pairs)
+
+**Key Findings:**
+- Compare NDCG@5 across variants to see which ranking method performs best
+- Higher NDCG indicates better ranking quality (relevant jobs ranked higher)
+- Higher Precision indicates more relevant jobs in top positions
+
+## Failure Cases & Next Steps
+
+**Potential Issues:**
+- Small dataset (7 resumes) may lead to high variance in LOOCV
+- LTR may fall back to heuristic if insufficient label variance per fold
+- Weak labels are noisy and may not reflect true user preferences
+
+**Next Steps:**
+1. Collect more resumes and jobs to improve statistical power
+2. Consider manual label correction for high-confidence cases
+3. Experiment with different LTR models (e.g., LambdaMART, RankNet)
+4. Tune hyperparameters (feature weights, min_rel_diff, threshold)

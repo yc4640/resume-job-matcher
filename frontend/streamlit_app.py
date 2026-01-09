@@ -102,18 +102,33 @@ def parse_resume_text(resume_text: str) -> Dict[str, Any]:
     return resume
 
 
-def call_recommend_jobs(resume: Dict[str, Any], top_k: int) -> Optional[Dict[str, Any]]:
+def call_recommend_jobs(resume: Dict[str, Any], top_k: int, use_ltr: bool = False) -> Optional[Dict[str, Any]]:
     """Call /recommend_jobs endpoint."""
     try:
         response = requests.post(
             f"{BACKEND_URL}/recommend_jobs",
-            json={"resume": resume, "top_k": top_k},
-            timeout=30
+            json={"resume": resume, "top_k": top_k, "use_ltr": use_ltr},
+            timeout=60
         )
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         st.error(f"Error calling /recommend_jobs: {str(e)}")
+        return None
+
+
+def call_match(resume: Dict[str, Any], job: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Call /match endpoint for single job analysis."""
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/match",
+            json={"resume": resume, "job": job},
+            timeout=60
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error calling /match: {str(e)}")
         return None
 
 
@@ -123,7 +138,7 @@ def call_explain(resume: Dict[str, Any], job_id: str) -> Optional[Dict[str, Any]
         response = requests.post(
             f"{BACKEND_URL}/explain",
             json={"resume": resume, "job_id": job_id},
-            timeout=30
+            timeout=60
         )
         response.raise_for_status()
         return response.json()
@@ -215,31 +230,99 @@ with col2:
 st.markdown("---")
 st.header("🔧 Matching Parameters")
 
-top_k = st.slider("Number of top jobs to recommend (Top-K):", min_value=1, max_value=20, value=5)
+# Show different parameters based on mode
+if selected_job:
+    st.info(f"**Single Job Analysis Mode:** Analyzing only the selected job: {selected_job['title']}")
+    top_k = 5  # Not used, but needs to be defined
+    use_ltr = False  # Not used for single job analysis
+else:
+    col_param1, col_param2 = st.columns([1, 1])
+
+    with col_param1:
+        top_k = st.slider("Number of top jobs to recommend (Top-K):", min_value=1, max_value=20, value=5)
+
+    with col_param2:
+        use_ltr = st.checkbox(
+            "Enable LTR re-ranking (use_ltr)",
+            value=False,
+            help="Use Learning to Rank model for re-ranking. Falls back to heuristic if model not available."
+        )
 
 # Run Match button
 if st.button("🚀 Run Match", type="primary", use_container_width=True):
     if not resume_text.strip():
         st.error("Please enter or upload a resume first!")
     else:
-        with st.spinner("Analyzing resume and matching jobs..."):
-            # Parse resume
-            resume_data = parse_resume_text(resume_text)
-            st.session_state.resume_data = resume_data
+        # Parse resume
+        resume_data = parse_resume_text(resume_text)
+        st.session_state.resume_data = resume_data
 
-            # Call recommend_jobs
-            result = call_recommend_jobs(resume_data, top_k)
+        # Check if user selected a specific job
+        if selected_job:
+            # Single job analysis mode
+            with st.spinner(f"Analyzing match for: {selected_job['title']}..."):
+                # Call /match endpoint for basic matching
+                match_result = call_match(resume_data, selected_job)
 
-            if result:
-                st.session_state.recommendations = result
-                st.session_state.explanations = {}  # Reset explanations
-                st.success(f"Found {len(result.get('recommendations', []))} matching jobs!")
-            else:
-                st.error("Failed to get recommendations. Please check if the backend is running.")
+                # Call /explain endpoint for detailed explanation
+                explain_result = call_explain(resume_data, selected_job['job_id'])
+
+                if match_result and explain_result:
+                    # Store single job analysis result
+                    st.session_state.recommendations = {
+                        'ranker': 'single_job_analysis',
+                        'recommendations': [{
+                            'job_id': selected_job['job_id'],
+                            'title': selected_job['title'],
+                            'company': selected_job.get('company', 'N/A'),
+                            'location': selected_job.get('location', 'N/A'),
+                            'level': selected_job.get('level', 'N/A'),
+                            'matched_skills': match_result.get('matched_skills', []),
+                            'gap_skills': match_result.get('gaps', []),
+                            'match_score': match_result.get('match_score', 0)
+                        }]
+                    }
+                    st.session_state.explanations = {selected_job['job_id']: explain_result}
+                    st.success(f"Analysis complete for: {selected_job['title']}!")
+                else:
+                    st.error("Failed to analyze the selected job. Please check if the backend is running.")
+        else:
+            # Multi-job recommendation mode
+            with st.spinner("Analyzing resume and matching jobs..."):
+                # Call recommend_jobs with use_ltr parameter
+                result = call_recommend_jobs(resume_data, top_k, use_ltr)
+
+                if result:
+                    st.session_state.recommendations = result
+                    st.session_state.explanations = {}  # Reset explanations
+
+                    # Display which ranker was used
+                    ranker = result.get('ranker', 'unknown')
+                    ranker_display = {
+                        'heuristic': '🔧 Heuristic',
+                        'ltr_logreg': '🤖 LTR (Logistic Regression)',
+                        'heuristic_fallback': '🔧 Heuristic (LTR unavailable)'
+                    }.get(ranker, ranker)
+
+                    st.success(f"Found {len(result.get('recommendations', []))} matching jobs! (Ranker: {ranker_display})")
+                else:
+                    st.error("Failed to get recommendations. Please check if the backend is running.")
 
 # Display Results
 if st.session_state.recommendations:
     st.markdown("---")
+
+    # Display ranker info
+    ranker = st.session_state.recommendations.get('ranker', 'unknown')
+    ranker_badge = {
+        'heuristic': '🔧 **Ranker:** Heuristic (Weighted Features)',
+        'ltr_logreg': '🤖 **Ranker:** LTR Logistic Regression',
+        'heuristic_fallback': '⚠️ **Ranker:** Heuristic (LTR model not found)',
+        'single_job_analysis': '🎯 **Mode:** Single Job Analysis'
+    }.get(ranker, f'**Ranker:** {ranker}')
+
+    st.info(ranker_badge)
+
     st.header("🎯 Top Matching Jobs")
 
     recommendations = st.session_state.recommendations.get('recommendations', [])
@@ -250,16 +333,16 @@ if st.session_state.recommendations:
         for i, rec in enumerate(recommendations, 1):
             with st.container():
                 # Job card header
-                col_title, col_score = st.columns([3, 1])
-                with col_title:
-                    st.subheader(f"{i}. {rec.get('title', 'N/A')}")
-                    company = rec.get('company') or 'N/A'
-                    location = rec.get('location') or 'N/A'
-                    level = rec.get('level') or 'N/A'
-                    st.caption(f"🏢 {company} | 📍 {location} | 📊 {level}")
-                with col_score:
-                    score = rec.get('similarity_score', 0)
-                    st.metric("Match Score", f"{score:.2%}")
+                st.subheader(f"{i}. {rec.get('title', 'N/A')}")
+                company = rec.get('company') or 'N/A'
+                location = rec.get('location') or 'N/A'
+                level = rec.get('level') or 'N/A'
+                st.caption(f"🏢 {company} | 📍 {location} | 📊 {level}")
+
+                # Match score (only for single job analysis)
+                match_score = rec.get('match_score')
+                if match_score is not None:
+                    st.metric("Match Score", f"{match_score}%")
 
                 # Matched skills
                 matched_skills = rec.get('matched_skills', [])
@@ -270,11 +353,14 @@ if st.session_state.recommendations:
                 if gap_skills:
                     st.write(f"**⚠️ Gap Skills:** {', '.join(gap_skills)}")
 
-                # Explain button
+                # Explain button (only show if not already explained)
                 job_id = rec.get('job_id')
                 explain_key = f"explain_{job_id}_{i}"
 
-                if st.button(f"💡 Explain Match", key=f"btn_{explain_key}"):
+                # For single job analysis, explanation is already loaded
+                is_single_job = st.session_state.recommendations.get('ranker') == 'single_job_analysis'
+
+                if not is_single_job and st.button(f"💡 Explain Match", key=f"btn_{explain_key}"):
                     with st.spinner("Generating explanation..."):
                         explanation_result = call_explain(st.session_state.resume_data, job_id)
                         if explanation_result:
@@ -310,13 +396,26 @@ with st.sidebar:
     - **Semantic embeddings** for similarity matching
     - **Explainable ranking** with weighted features
     - **RAG-based explanations** for match insights
+    - **Learning to Rank (LTR)** for improved ranking (optional)
 
     **How to use:**
+
+    **Mode 1: Single Job Analysis**
     1. Enter or upload your resume
-    2. (Optional) Select a specific job or match against all
-    3. Set the number of top jobs to show
-    4. Click "Run Match" to get recommendations
-    5. Click "Explain Match" for detailed insights
+    2. Select a specific job from dropdown
+    3. Click "Run Match" → Get detailed analysis for that job
+
+    **Mode 2: Multi-Job Recommendations**
+    1. Enter or upload your resume
+    2. Leave job selection as "None"
+    3. Set the number of top jobs (Top-K)
+    4. (Optional) Enable LTR re-ranking
+    5. Click "Run Match" → Get top-K recommendations
+    6. Click "Explain Match" for detailed insights
+
+    **Rankers (Mode 2 only):**
+    - **Heuristic:** Weighted combination of features (default)
+    - **LTR:** Pairwise logistic regression (requires trained model)
     """)
 
     st.header("🔧 Backend Status")

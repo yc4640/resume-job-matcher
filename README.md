@@ -1,120 +1,144 @@
 # LM Match Service
 
-## 项目简介
+**[简体中文](README.zh-CN.md)** | **English**
 
-LM Match Service 是一个基于 FastAPI 的求职简历匹配服务。本项目目前处于 M6 阶段，在可解释排序、RAG 解释和评估体系的基础上，新增了 Streamlit 交互界面，提供开箱即用的 Web Demo，让用户无需编写代码即可体验完整的职位匹配和解释功能。
+## Project Overview
 
-### 当前功能
+LM Match Service is a FastAPI-based job-resume matching service. The project is currently in the M7 stage, building upon explainable ranking, RAG explanations, evaluation systems, and Streamlit interactive interface, with the addition of a complete Learning to Rank (LTR) system that optimizes ranking effectiveness through machine learning for more accurate job recommendations.
 
-#### M1：基础匹配功能
-- ✅ 健康检查接口 (`/health`)
-- ✅ 职位-简历匹配接口 (`/match`) - 返回结构化匹配结果
-- ✅ 使用 Pydantic 定义数据模型（JobPosting、Resume、MatchResponse）
-- ✅ 基于技能集合的匹配算法（不使用 LLM）
-- ✅ 提供匹配分数、匹配技能、技能差距和学习建议
+### Current Features
 
-#### M2：语义推荐功能
-- ✅ 职位推荐接口 (`/recommend_jobs`) - 基于语义相似度的 Top-K 推荐
-- ✅ 使用 sentence-transformers 本地模型进行文本嵌入
-- ✅ 余弦相似度计算和排序
-- ✅ 批量职位数据集（jobs.jsonl）和简历数据集（resumes.jsonl）
-- ✅ 完全本地运行，无需付费 API
+#### M1: Basic Matching Features
+- ✅ Health check endpoint (`/health`)
+- ✅ Job-resume matching endpoint (`/match`) - Returns structured matching results
+- ✅ Data models defined using Pydantic (JobPosting, Resume, MatchResponse)
+- ✅ Skill-set based matching algorithm (no LLM)
+- ✅ Provides match score, matched skills, skill gaps, and learning suggestions
 
-#### M3：可解释排序功能
-- ✅ 轻量排序层 - 在 embedding 召回基础上引入多维度打分
-- ✅ 技能词表 (180+ 技能) - 标准化技能匹配
-- ✅ YAML 配置 - 无需修改代码即可调整排序权重
-- ✅ 多维度特征：
-  - `embedding_score`: 语义相似度
-  - `skill_overlap`: 技能覆盖率
-  - `keyword_bonus`: 关键字命中加分
-  - `gap_penalty`: 缺失关键技能惩罚
-- ✅ 可解释性 - 自动生成排名第一的详细解释
+#### M2: Semantic Recommendation Features
+- ✅ Job recommendation endpoint (`/recommend_jobs`) - Top-K recommendations based on semantic similarity
+- ✅ Text embedding using local sentence-transformers model
+- ✅ Cosine similarity calculation and ranking
+- ✅ Batch job dataset (jobs.jsonl) and resume dataset (resumes.jsonl)
+- ✅ Fully local operation, no paid API required
 
-#### M4：RAG 可解释层
-- ✅ 证据构建 - 从职位和简历中提取结构化证据
-- ✅ 智能检索 - 基于语义相似度选择最相关的证据片段
-- ✅ LLM 生成 - 使用大语言模型生成基于证据的解释
-- ✅ 三维分析 - 为每个推荐职位提供：
-  - `explanation`: 为什么这个岗位适合候选人
-  - `gap_analysis`: 候选人缺少哪些关键技能或资质
-  - `improvement_suggestions`: 具体可行的提升建议
-- ✅ 防止幻觉 - 严格基于证据生成，LLM 仅用于解释层，不参与排序
-- ✅ **技能自动提取与合并** - 从简历文本（education/projects/experience）中自动提取技能，避免过度严格的匹配
-- ✅ **软技能过滤** - 软技能（如 Communication、Leadership）缺失不计入 gap_penalty
+#### M3: Explainable Ranking Features
+- ✅ Lightweight ranking layer - Introduces multi-dimensional scoring on top of embedding retrieval
+- ✅ Skills vocabulary (180+ skills) - Standardized skill matching
+- ✅ YAML configuration - Adjust ranking weights without modifying code
+- ✅ Multi-dimensional features:
+  - `embedding`: Semantic similarity (embedding score)
+  - `skill_overlap`: Skill coverage rate
+  - `keyword_bonus`: Keyword matching bonus
+  - `gap_penalty`: Missing critical skills penalty
+- ✅ Explainability - Automatically generates detailed explanations for the top-ranked job
 
-#### M5：评估与弱监督标签生成
-- ✅ 数据 ID 对齐 - jobs.jsonl 和 resumes.jsonl 添加 job_id、resume_id
-- ✅ LLM 辅助标签生成 - 使用 GPT-4o-mini 为 Top-15 推荐生成 0-3 分级标签
-- ✅ 弱监督标签（Weak Labels）- 快速生成大规模标注数据
-- ✅ 评估指标实现：
-  - Precision@K - 衡量推荐精准度
-  - NDCG@K - 衡量排序质量（考虑位置权重）
-- ✅ 人工校正模板 - labels_final.csv 支持人工审核和修正
-- ✅ 完整评估报告 - eval_report.md 详细说明数据、指标、结果解读
+#### M4: RAG Explanation Layer
+- ✅ Evidence construction - Extracts structured evidence from jobs and resumes
+- ✅ Intelligent retrieval - Selects the most relevant evidence fragments based on semantic similarity
+- ✅ LLM generation - Uses large language models to generate evidence-based explanations
+- ✅ Three-dimensional analysis - Provides for each recommended job:
+  - `explanation`: Why this job suits the candidate
+  - `gap_analysis`: Which key skills or qualifications the candidate lacks
+  - `improvement_suggestions`: Specific actionable improvement suggestions
+- ✅ Prevents hallucination - Strictly evidence-based generation, LLM only used for explanation layer, not for ranking
+- ✅ **Automatic skill extraction and merging** - Automatically extracts skills from resume text (education/projects/experience) to avoid overly strict matching
+- ✅ **Soft skill filtering** - Missing soft skills (e.g., Communication, Leadership) are not counted in gap_penalty
 
-#### M6：Streamlit 交互界面
-- ✅ Streamlit Web 界面 - 轻量级交互式前端
-- ✅ 多种简历输入方式 - 文本框输入或上传 TXT 文件
-- ✅ 职位选择 - 从 jobs.jsonl 数据库选择
-- ✅ Top-K 参数配置 - 灵活调整推荐数量
-- ✅ 一键匹配 - 调用后端 `/recommend_jobs` 接口
-- ✅ 可视化结果展示 - 职位信息、匹配分数、技能对比
-- ✅ 详细解释生成 - 点击按钮调用 `/explain` 接口
-- ✅ 后端状态监控 - 实时检查后端服务可用性
+#### M5: Evaluation and Weak Supervision Label Generation (Old Version, Partially Replaced by M7)
+- ✅ Data ID alignment - Added job_id and resume_id to jobs.jsonl and resumes.jsonl
+- ⚠️ LLM-assisted label generation - Uses GPT-4o-mini to generate 0-3 graded labels for Top-15 recommendations (**M7 upgraded to full 1-5 labels**)
+- ✅ Weak labels - Quickly generates large-scale annotation data
+- ✅ Evaluation metrics implementation:
+  - Precision@K - Measures recommendation accuracy
+  - NDCG@K - Measures ranking quality (considers position weights)
+- ⚠️ Evaluation method - Simple label validation (**M7 upgraded to LOOCV + Ablation Study**)
+- ❌ **Deprecated files**: labels_final.csv (manual correction template), run_eval.py (evaluation script), eval_results.json (evaluation results)
 
-#### 通用特性
-- ✅ RESTful API 设计
-- ✅ 自动生成的 API 文档（Swagger UI / ReDoc）
+#### M6: Streamlit Interactive Interface
+- ✅ Streamlit Web interface - Lightweight interactive frontend
+- ✅ Multiple resume input methods - Text box input or upload TXT file
+- ✅ Job selection - Choose from jobs.jsonl database
+- ✅ Top-K parameter configuration - Flexibly adjust recommendation count
+- ✅ One-click matching - Calls backend `/recommend_jobs` endpoint
+- ✅ Visualized result display - Job information, match scores, skill comparison
+- ✅ Detailed explanation generation - Click button to call `/explain` endpoint
+- ✅ Backend status monitoring - Real-time check of backend service availability
 
-## 项目结构
+#### M7: Learning to Rank (LTR) System
+- ✅ Full weak labels (1-5 scale) - Covers all resume×job combinations (750 pairs: 15 resumes × 50 jobs)
+- ✅ Pairwise LTR training - Ranking model based on Logistic Regression
+- ✅ LOOCV evaluation - Leave-One-Out Cross-Validation (essential for small data)
+- ✅ Ablation study - Compares three ranking methods: embedding_only, heuristic, LTR
+- ✅ Evaluation metrics - NDCG@5/10, Precision@5/10
+- ✅ FastAPI use_ltr switch - Frontend can toggle LTR ranking on/off
+- ✅ Streamlit LTR toggle - UI one-click enable/disable LTR feature
+- ✅ Model persistence - joblib save/load LTR model
+
+#### General Features
+- ✅ RESTful API design
+- ✅ Auto-generated API documentation (Swagger UI / ReDoc)
+
+## Project Structure
 
 ```
 lm/
 ├── backend/
-│   ├── main.py              # FastAPI 主应用文件
-│   ├── schemas.py           # Pydantic 数据模型定义
-│   ├── test_match.py        # 匹配接口测试文件
-│   ├── requirements.txt     # Python 依赖
-│   ├── .env.example         # 环境变量配置示例 (M4)
-│   ├── services/            # 业务逻辑服务
-│   │   ├── __init__.py         # 服务包初始化
-│   │   ├── embedding.py        # 文本嵌入服务 (M2)
-│   │   ├── retrieval.py        # 检索和排序服务 (M2)
-│   │   ├── ranking.py          # 可解释排序服务 (M3)
-│   │   ├── rag.py              # RAG 可解释层服务 (M4)
-│   │   └── utils.py            # 工具函数（技能提取与合并）(M4.1)
-│   ├── config/              # 配置文件 (M3 新增)
-│   │   └── ranking_config.yaml # 排序权重配置
-│   ├── eval/                # 评估模块 (M5 新增)
-│   │   ├── generate_labels.py  # LLM 辅助标签生成脚本
-│   │   ├── labels_suggested.jsonl  # LLM 生成的标签
-│   │   ├── labels_final.csv    # 人工校正模板
-│   │   ├── metrics.py          # 评估指标（Precision@K, NDCG@K）
-│   │   ├── run_eval.py         # 评估运行脚本
-│   │   ├── eval_results.json   # 评估结果
-│   │   └── eval_report.md      # 评估报告（中文）
+│   ├── main.py              # FastAPI main application file
+│   ├── schemas.py           # Pydantic data model definitions
+│   ├── test_match.py        # Match endpoint test file
+│   ├── requirements.txt     # Python dependencies
+│   ├── .env.example         # Environment variable configuration example (M4)
+│   ├── services/            # Business logic services
+│   │   ├── __init__.py         # Service package initialization
+│   │   ├── embedding.py        # Text embedding service (M2)
+│   │   ├── retrieval.py        # Retrieval and ranking service (M2)
+│   │   ├── ranking.py          # Explainable ranking service (M3)
+│   │   ├── rag.py              # RAG explanation layer service (M4)
+│   │   └── utils.py            # Utility functions (skill extraction and merging) (M4.1)
+│   ├── src/                 # LTR source code module (M7 added)
+│   │   └── ranking/
+│   │       ├── __init__.py     # Ranking package initialization
+│   │       ├── features.py     # Feature extraction and vectorization
+│   │       ├── pairwise.py     # Pairwise training data construction
+│   │       └── ltr_logreg.py   # Pairwise Logistic Regression model
+│   ├── scripts/             # Scripts directory (M7 added)
+│   │   └── eval_ablation.py    # LOOCV + Ablation evaluation script
+│   ├── models/              # Model save directory (M7 added)
+│   │   └── ltr_logreg.joblib   # Trained LTR model
+│   ├── results/             # Evaluation results directory (M7 added)
+│   │   └── ablation_results.json  # Ablation study results
+│   ├── config/              # Configuration files (M3 added)
+│   │   └── ranking_config.yaml # Ranking weight configuration
+│   ├── eval/                # Evaluation module (M5/M7 updated)
+│   │   ├── generate_labels.py  # Full 1-5 weak labels generation script (M7 updated)
+│   │   ├── labels_suggested.jsonl  # Full 1-5 labels (M7: 750 pairs)
+│   │   ├── labels_final.csv    # Manual correction template (deprecated)
+│   │   ├── metrics.py          # Evaluation metrics (Precision@K, NDCG@K)
+│   │   ├── run_eval.py         # Evaluation run script (deprecated, use scripts/eval_ablation.py)
+│   │   ├── eval_results.json   # Evaluation results (deprecated)
+│   │   └── eval_report.md      # Evaluation report (M7 updated)
 │   └── data/
-│       ├── sample_job.json        # 示例职位数据
-│       ├── sample_resume.json     # 示例简历数据
-│       ├── jobs.jsonl             # 批量职位数据（22条，含 job_id）(M5)
-│       ├── resumes.jsonl          # 批量简历数据（7条，含 resume_id）(M5)
-│       └── skills_vocabulary.txt  # 技能词表（180+ 技能）(M3)
-├── frontend/                # 前端界面 (M6 新增)
-│   ├── streamlit_app.py     # Streamlit 交互界面
-│   └── requirements.txt     # 前端依赖（Streamlit, requests）
-├── .gitignore               # Git 忽略文件配置
-└── README.md                # 项目说明文档
+│       ├── sample_job.json        # Sample job data
+│       ├── sample_resume.json     # Sample resume data
+│       ├── jobs.jsonl             # Batch job data (50 items, with job_id) (M5/M7)
+│       ├── resumes.jsonl          # Batch resume data (15 items, with resume_id) (M5/M7)
+│       └── skills_vocabulary.txt  # Skills vocabulary (180+ skills) (M3)
+├── frontend/                # Frontend interface (M6 added)
+│   ├── streamlit_app.py     # Streamlit interactive interface
+│   └── requirements.txt     # Frontend dependencies (Streamlit, requests)
+├── .gitignore               # Git ignore file configuration
+└── README.md                # Project documentation
 ```
 
-## 如何运行
+## How to Run
 
-### 1. 环境要求
+### 1. Environment Requirements
 
 - Python 3.8+
 - pip
 
-### 2. 创建虚拟环境
+### 2. Create Virtual Environment
 
 ```bash
 # Windows
@@ -126,80 +150,80 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. 安装依赖
+### 3. Install Dependencies
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 4. 配置环境变量（M4 新增）
+### 4. Configure Environment Variables (M4 Added)
 
-为了使用 RAG 可解释层功能，需要配置 OpenAI API Key：
+To use the RAG explanation layer feature, you need to configure the OpenAI API Key:
 
 ```bash
-# 复制环境变量示例文件
+# Copy environment variable example file
 cp .env.example .env
 
-# 编辑 .env 文件，填入你的 OpenAI API Key
+# Edit .env file, fill in your OpenAI API Key
 # OPENAI_API_KEY=sk-your-actual-api-key-here
 ```
 
-**获取 OpenAI API Key：**
-1. 访问 https://platform.openai.com/api-keys
-2. 登录或注册 OpenAI 账号
-3. 创建新的 API Key
-4. 将 API Key 填入 `.env` 文件
+**How to get OpenAI API Key:**
+1. Visit https://platform.openai.com/api-keys
+2. Login or register OpenAI account
+3. Create a new API Key
+4. Fill the API Key into the `.env` file
 
-**注意：** 如果不配置 API Key，推荐接口仍可正常工作，但每个推荐职位的 `explanation`、`gap_analysis` 和 `improvement_suggestions` 字段将为 `null`。
+**Note:** If you don't configure the API Key, the recommendation endpoint will still work normally, but the `explanation`, `gap_analysis`, and `improvement_suggestions` fields for each recommended job will be `null`.
 
-### 5. 启动服务
+### 5. Start Service
 
 ```bash
-# 方式一：使用 uvicorn 命令
+# Method 1: Using uvicorn command
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# 方式二：直接运行 main.py
+# Method 2: Run main.py directly
 python main.py
 ```
 
-服务启动后，访问 http://localhost:8000
+After the service starts, access http://localhost:8000
 
-### 6. 查看 API 文档
+### 6. View API Documentation
 
-FastAPI 自动生成交互式 API 文档：
+FastAPI automatically generates interactive API documentation:
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-## 数据模型说明
+## Data Model Description
 
-### JobPosting（职位信息）
-
-```json
-{
-  "title": "职位名称",
-  "responsibilities": "岗位职责描述",
-  "requirements_text": "任职要求描述",
-  "skills": ["技能1", "技能2", "..."],
-  "company": "公司名称（可选）",
-  "location": "工作地点（可选）",
-  "level": "职位级别（可选）"
-}
-```
-
-### Resume（简历信息）
+### JobPosting (Job Information)
 
 ```json
 {
-  "education": "教育背景",
-  "projects": "项目经历",
-  "skills": ["技能1", "技能2", "..."],
-  "experience": "工作经验"
+  "title": "Job Title",
+  "responsibilities": "Job responsibilities description",
+  "requirements_text": "Job requirements description",
+  "skills": ["Skill1", "Skill2", "..."],
+  "company": "Company Name (optional)",
+  "location": "Location (optional)",
+  "level": "Job Level (optional)"
 }
 ```
 
-### MatchResponse（匹配结果）
+### Resume (Resume Information)
+
+```json
+{
+  "education": "Educational Background",
+  "projects": "Project Experience",
+  "skills": ["Skill1", "Skill2", "..."],
+  "experience": "Work Experience"
+}
+```
+
+### MatchResponse (Match Result)
 
 ```json
 {
@@ -214,9 +238,9 @@ FastAPI 自动生成交互式 API 文档：
 }
 ```
 
-## 示例数据
+## Sample Data
 
-### 示例职位数据 (backend/data/sample_job.json)
+### Sample Job Data (backend/data/sample_job.json)
 
 ```json
 {
@@ -238,7 +262,7 @@ FastAPI 自动生成交互式 API 文档：
 }
 ```
 
-### 示例简历数据 (backend/data/sample_resume.json)
+### Sample Resume Data (backend/data/sample_resume.json)
 
 ```json
 {
@@ -257,67 +281,67 @@ FastAPI 自动生成交互式 API 文档：
 }
 ```
 
-### 批量测试数据集（JSONL 格式）
+### Batch Test Datasets (JSONL Format)
 
-为了支持后续的 top-k 推荐功能测试，我们提供了两个 JSON Lines 格式的数据集：
+To support subsequent top-k recommendation feature testing, we provide two JSON Lines format datasets:
 
 #### backend/data/jobs.jsonl
-- 包含 22 条真实的职位信息
-- 涵盖技能领域：推荐系统、搜索、NLP、LLM、数据工程、后端开发、机器学习等
-- 每行一个 JSON 对象，符合 `JobPosting` schema
+- Contains 50 real job postings (M7 expanded)
+- Covers skill domains: recommendation systems, search, NLP, LLM, CV, data engineering, backend development, machine learning, etc.
+- Each line is a JSON object conforming to `JobPosting` schema
 
 #### backend/data/resumes.jsonl
-- 包含 7 条不同背景的简历
-- 技能与职位数据有不同程度的重叠，适合测试匹配算法
-- 每行一个 JSON 对象，符合 `Resume` schema
+- Contains 15 resumes with different backgrounds (M7 expanded)
+- Skills overlap with job data to varying degrees, suitable for testing matching algorithms
+- Each line is a JSON object conforming to `Resume` schema
 
-#### 如何加载 JSONL 文件
+#### How to Load JSONL Files
 
-在 Python 中加载这些文件用于测试：
+Loading these files in Python for testing:
 
 ```python
 import json
 from schemas import JobPosting, Resume
 
-# 加载所有职位
+# Load all jobs
 jobs = []
 with open('backend/data/jobs.jsonl', 'r', encoding='utf-8') as f:
     for line in f:
         job_data = json.loads(line)
         jobs.append(JobPosting(**job_data))
 
-print(f"加载了 {len(jobs)} 个职位")
+print(f"Loaded {len(jobs)} jobs")
 
-# 加载所有简历
+# Load all resumes
 resumes = []
 with open('backend/data/resumes.jsonl', 'r', encoding='utf-8') as f:
     for line in f:
         resume_data = json.loads(line)
         resumes.append(Resume(**resume_data))
 
-print(f"加载了 {len(resumes)} 份简历")
+print(f"Loaded {len(resumes)} resumes")
 ```
 
-#### 用于 top-k 推荐测试示例
+#### Top-k Recommendation Test Example
 
 ```python
-# 示例：为一份简历找到最匹配的 top-5 职位
+# Example: Find top-5 matching jobs for a resume
 from main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-# 加载第一份简历（推荐系统背景）
+# Load first resume (recommendation systems background)
 with open('backend/data/resumes.jsonl', 'r', encoding='utf-8') as f:
     resume_data = json.loads(f.readline())
 
-# 加载所有职位并计算匹配分数
+# Load all jobs and calculate match scores
 matches = []
 with open('backend/data/jobs.jsonl', 'r', encoding='utf-8') as f:
     for line in f:
         job_data = json.loads(line)
 
-        # 调用 /match 接口
+        # Call /match endpoint
         response = client.post("/match", json={
             "job": job_data,
             "resume": resume_data
@@ -331,34 +355,34 @@ with open('backend/data/jobs.jsonl', 'r', encoding='utf-8') as f:
             "gaps": result["gaps"]
         })
 
-# 按匹配分数排序，取 top-5
+# Sort by match score, take top-5
 top_5 = sorted(matches, key=lambda x: x["match_score"], reverse=True)[:5]
 
-print("\nTop 5 最匹配的职位：")
+print("\nTop 5 best matching jobs:")
 for i, match in enumerate(top_5, 1):
-    print(f"{i}. {match['job_title']} - 匹配度: {match['match_score']}%")
-    print(f"   匹配技能: {', '.join(match['matched_skills'])}")
-    print(f"   技能差距: {', '.join(match['gaps'])}\n")
+    print(f"{i}. {match['job_title']} - Match Score: {match['match_score']}%")
+    print(f"   Matched Skills: {', '.join(match['matched_skills'])}")
+    print(f"   Skill Gaps: {', '.join(match['gaps'])}\n")
 ```
 
-#### 预期使用场景
+#### Expected Use Cases
 
-这些 JSONL 数据集将在后续 Milestone 中用于：
-1. **批量匹配测试**：测试系统处理多个职位和简历的性能
-2. **Top-k 推荐**：为给定简历推荐最匹配的 k 个职位（或反向推荐）
-3. **排序算法验证**：验证基于匹配分数的排序逻辑
-4. **性能基准测试**：测试大规模匹配的响应时间和准确性
+These JSONL datasets will be used in subsequent Milestones for:
+1. **Batch matching tests**: Test system performance processing multiple jobs and resumes
+2. **Top-k recommendations**: Recommend the most matching k jobs for a given resume (or reverse recommendation)
+3. **Ranking algorithm verification**: Verify sorting logic based on match scores
+4. **Performance benchmarking**: Test response time and accuracy for large-scale matching
 
-## 如何测试接口
+## How to Test Endpoints
 
-### 测试健康检查接口
+### Test Health Check Endpoint
 
-**使用 curl:**
+**Using curl:**
 ```bash
 curl http://localhost:8000/health
 ```
 
-**预期响应:**
+**Expected Response:**
 ```json
 {
   "status": "ok",
@@ -366,14 +390,14 @@ curl http://localhost:8000/health
 }
 ```
 
-### 测试匹配接口
+### Test Match Endpoint
 
-#### 方式一：使用 Swagger UI（推荐）
+#### Method 1: Using Swagger UI (Recommended)
 
-1. 访问 http://localhost:8000/docs
-2. 找到 `POST /match` 接口
-3. 点击 **"Try it out"** 按钮
-4. 在 Request body 中粘贴以下 JSON：
+1. Visit http://localhost:8000/docs
+2. Find `POST /match` endpoint
+3. Click **"Try it out"** button
+4. Paste the following JSON in the Request body:
 
 ```json
 {
@@ -411,10 +435,10 @@ curl http://localhost:8000/health
 }
 ```
 
-5. 点击 **"Execute"** 按钮执行请求
-6. 查看响应结果
+5. Click **"Execute"** button to execute the request
+6. View the response results
 
-**预期响应示例:**
+**Expected Response Example:**
 ```json
 {
   "match_score": 42,
@@ -438,7 +462,7 @@ curl http://localhost:8000/health
 }
 ```
 
-#### 方式二：使用 curl
+#### Method 2: Using curl
 
 ```bash
 curl -X POST http://localhost:8000/match \
@@ -462,25 +486,25 @@ curl -X POST http://localhost:8000/match \
   }'
 ```
 
-#### 方式三：使用 Python 测试脚本
+#### Method 3: Using Python Test Script
 
-运行项目自带的测试脚本：
+Run the project's built-in test script:
 
 ```bash
 cd backend
 python test_match.py
 ```
 
-该脚本包含多个测试用例，涵盖完全匹配、部分匹配、不匹配等场景。
+This script contains multiple test cases covering complete match, partial match, no match scenarios, etc.
 
-### 测试职位推荐接口（M2 新增）
+### Test Job Recommendation Endpoint (M2 Added)
 
-#### 方式一：使用 Swagger UI（推荐）
+#### Method 1: Using Swagger UI (Recommended)
 
-1. 访问 http://localhost:8000/docs
-2. 找到 `POST /recommend_jobs` 接口
-3. 点击 **"Try it out"** 按钮
-4. 在 Request body 中粘贴以下 JSON（使用示例简历数据）：
+1. Visit http://localhost:8000/docs
+2. Find `POST /recommend_jobs` endpoint
+3. Click **"Try it out"** button
+4. Paste the following JSON in the Request body (using sample resume data):
 
 ```json
 {
@@ -509,10 +533,10 @@ python test_match.py
 }
 ```
 
-5. 点击 **"Execute"** 按钮执行请求
-6. 查看响应结果
+5. Click **"Execute"** button to execute the request
+6. View the response results
 
-**预期响应示例:**
+**Expected Response Example:**
 ```json
 {
   "recommendations": [
@@ -534,7 +558,7 @@ python test_match.py
       ],
       "gap_skills": [],
       "features": {
-        "embedding_score": 0.682073712348938,
+        "embedding": 0.682073712348938,
         "skill_overlap": 1,
         "keyword_bonus": 0.85,
         "gap_penalty": 0,
@@ -562,7 +586,7 @@ python test_match.py
         "Vector Databases"
       ],
       "features": {
-        "embedding_score": 0.6174665093421936,
+        "embedding": 0.6174665093421936,
         "skill_overlap": 0.8888888888888888,
         "keyword_bonus": 0.9,
         "gap_penalty": 0.1,
@@ -589,7 +613,7 @@ python test_match.py
         "Research"
       ],
       "features": {
-        "embedding_score": 0.6600039005279541,
+        "embedding": 0.6600039005279541,
         "skill_overlap": 0.75,
         "keyword_bonus": 0.7,
         "gap_penalty": 0.2,
@@ -597,29 +621,29 @@ python test_match.py
       }
     }
   ],
-  "total_jobs_searched": 22,
+  "total_jobs_searched": 50,
   "explanation": "【NLP Engineer - Conversational AI】Ranked #1 for the following reasons:\n\n1. Semantic Similarity: 0.682 (Weight: 0.4)\n   - The job description is highly semantically aligned with the resume content\n\n2. Skill Coverage: 1.000 (Weight: 0.3)\n   - Matched skills (7): Python, Transformers, Prompt Engineering, NLP, LLM\n   - Missing skills (0): None\n\n3. Keyword Bonus: 0.850 (Weight: 0.2)\n   - Matches high-priority skills\n\n4. Gap Penalty: 0.000 (Weight: 0.1)\n   - Penalty applied for missing critical skills\n\nOverall Score: 0.743"
 }
 ```
 
-**说明（M4 更新）：**
-- `similarity_score`：基于语义嵌入的余弦相似度（0-1之间，等同于 embedding_score）
-- `matched_skills`：简历技能与职位要求技能的交集（基于标准化技能词表）
-- `gap_skills`：职位要求但简历缺失的技能（M3 新增）
-- `features`：可解释的排序特征（M3 新增）
-  - `embedding_score`：语义相似度（0-1）
-  - `skill_overlap`：技能覆盖率（0-1）
-  - `keyword_bonus`：关键词加分（0-1）
-  - `gap_penalty`：缺失惩罚（0-1）
-  - `final_score`：综合得分（加权计算）
-- `explanation`：排名第一职位的详细解释（M3 新增）
-- **M4 新增字段（每个推荐职位）：**
-  - `explanation`：为什么这个岗位适合候选人（基于证据的解释）
-  - `gap_analysis`：候选人缺少哪些关键技能或资质
-  - `improvement_suggestions`：具体可行的提升建议
-- `total_jobs_searched`：从 jobs.jsonl 加载的总职位数量
+**Description (M4 Updated):**
+- `similarity_score`: Cosine similarity based on semantic embeddings (between 0-1, equivalent to embedding_score)
+- `matched_skills`: Intersection of resume skills and job required skills (based on standardized skills vocabulary)
+- `gap_skills`: Skills required by the job but missing from the resume (M3 added)
+- `features`: Explainable ranking features (M3 added)
+  - `embedding`: Semantic similarity (0-1)
+  - `skill_overlap`: Skill coverage rate (0-1)
+  - `keyword_bonus`: Keyword bonus (0-1)
+  - `gap_penalty`: Missing penalty (0-1)
+  - `final_score`: Comprehensive score (weighted calculation)
+- `explanation`: Detailed explanation for the top-ranked job (M3 added)
+- **M4 Added Fields (for each recommended job):**
+  - `explanation`: Why this job suits the candidate (evidence-based explanation)
+  - `gap_analysis`: Which key skills or qualifications the candidate lacks
+  - `improvement_suggestions`: Specific actionable improvement suggestions
+- `total_jobs_searched`: Total number of jobs loaded from jobs.jsonl
 
-**M4 返回示例（单个推荐职位）：**
+**M4 Response Example (single recommended job):**
 ```json
 {
   "rank": 1,
@@ -631,7 +655,7 @@ python test_match.py
   "matched_skills": ["Python", "Transformers", "NLP", "LLM"],
   "gap_skills": [],
   "features": {
-    "embedding_score": 0.682,
+    "embedding": 0.682,
     "skill_overlap": 1.0,
     "keyword_bonus": 0.85,
     "gap_penalty": 0.0,
@@ -643,7 +667,7 @@ python test_match.py
 }
 ```
 
-#### 方式二：使用 curl
+#### Method 2: Using curl
 
 ```bash
 curl -X POST http://localhost:8000/recommend_jobs \
@@ -659,148 +683,148 @@ curl -X POST http://localhost:8000/recommend_jobs \
   }'
 ```
 
-#### 推荐接口特点（M3 增强）
+#### Recommendation Endpoint Features (M3 Enhanced)
 
-- **语义匹配 (M2)**：使用 sentence-transformers 本地模型（all-MiniLM-L6-v2）进行文本嵌入
-- **多维度排序 (M3)**：结合语义相似度、技能覆盖率、关键词加分、缺失惩罚的综合打分
-- **可解释性 (M3)**：自动生成排名第一职位的详细解释，说明为什么它最匹配
-- **灵活配置 (M3)**：通过 YAML 配置文件调整排序权重，无需修改代码
-- **标准化技能 (M3)**：基于 180+ 技能词表进行标准化匹配
-- **无需付费 API**：完全本地运行，无需调用外部 API
-- **技能重叠信息**：提供精确的匹配技能和缺失技能列表
+- **Semantic Matching (M2)**: Uses sentence-transformers local model (all-MiniLM-L6-v2) for text embedding
+- **Multi-dimensional Ranking (M3)**: Comprehensive scoring combining semantic similarity, skill coverage rate, keyword bonus, and missing penalty
+- **Explainability (M3)**: Automatically generates detailed explanations for the top-ranked job, explaining why it's the best match
+- **Flexible Configuration (M3)**: Adjust ranking weights through YAML configuration file without modifying code
+- **Standardized Skills (M3)**: Standardized matching based on 180+ skills vocabulary
+- **No Paid API Required**: Fully local operation, no external API calls
+- **Skill Overlap Information**: Provides precise matched skills and missing skills lists
 
-## 技术栈
+## Technology Stack
 
-- **FastAPI**: 现代、高性能的 Python Web 框架
-- **Pydantic**: 数据验证和设置管理
-- **Uvicorn**: ASGI 服务器
-- **Sentence-Transformers**: 本地文本嵌入模型（M2）
-- **NumPy**: 向量计算和相似度计算（M2）
-- **PyYAML**: 配置文件管理（M3）
-- **OpenAI API**: LLM 生成解释文本（M4）
+- **FastAPI**: Modern, high-performance Python web framework
+- **Pydantic**: Data validation and settings management
+- **Uvicorn**: ASGI server
+- **Sentence-Transformers**: Local text embedding model (M2)
+- **NumPy**: Vector computation and similarity calculation (M2)
+- **PyYAML**: Configuration file management (M3)
+- **OpenAI API**: LLM-generated explanation text (M4)
 
-## 匹配算法说明
+## Matching Algorithm Description
 
-### M1：基于技能集合的精确匹配
+### M1: Skill Set-Based Exact Matching
 
-使用集合运算进行技能匹配：
+Uses set operations for skill matching:
 
-1. **匹配技能** (matched_skills)：求职者技能与职位要求技能的交集
-2. **技能差距** (gaps)：职位要求技能中求职者不具备的技能
-3. **匹配分数** (match_score)：匹配技能数量占职位要求技能总数的百分比
-   - 公式：`match_score = (len(matched_skills) / len(job.skills)) * 100`
-   - 如果职位没有技能要求，则返回 0
-4. **学习建议** (suggestions)：针对每个技能差距提供学习建议
+1. **Matched Skills** (matched_skills): Intersection of candidate skills and job required skills
+2. **Skill Gaps** (gaps): Skills required by the job that the candidate doesn't have
+3. **Match Score** (match_score): Percentage of matched skills relative to total job required skills
+   - Formula: `match_score = (len(matched_skills) / len(job.skills)) * 100`
+   - If the job has no skill requirements, returns 0
+4. **Learning Suggestions** (suggestions): Provides learning suggestions for each skill gap
 
-### M2：基于语义嵌入的推荐系统
+### M2: Semantic Embedding-Based Recommendation System
 
-使用 sentence-transformers 进行语义相似度匹配：
+Uses sentence-transformers for semantic similarity matching:
 
-1. **文本嵌入**：
-   - 模型：all-MiniLM-L6-v2（384维向量，本地运行）
-   - 职位文本：拼接 title + responsibilities + requirements_text + skills
-   - 简历文本：拼接 education + projects + experience + skills
+1. **Text Embedding**:
+   - Model: all-MiniLM-L6-v2 (384-dimensional vectors, local operation)
+   - Job text: Concatenates title + responsibilities + requirements_text + skills
+   - Resume text: Concatenates education + projects + experience + skills
 
-2. **相似度计算**：
-   - 使用余弦相似度（Cosine Similarity）计算简历与职位的语义相似度
-   - 相似度范围：0-1，越接近1表示越相似
+2. **Similarity Calculation**:
+   - Uses Cosine Similarity to calculate semantic similarity between resume and jobs
+   - Similarity range: 0-1, closer to 1 indicates more similar
 
-3. **Top-K 推荐**：
-   - 根据相似度分数降序排序
-   - 返回最匹配的 top-k 个职位
-   - 附带精确的技能重叠信息（复用 M1 逻辑）
+3. **Top-K Recommendations**:
+   - Sorts by similarity score in descending order
+   - Returns top-k most matching jobs
+   - Includes precise skill overlap information (reuses M1 logic)
 
-### M3：可解释的轻量排序层
+### M3: Explainable Lightweight Ranking Layer
 
-在 M2 embedding 召回基础上，引入多维度打分机制：
+Introduces multi-dimensional scoring mechanism on top of M2 embedding retrieval:
 
-#### 1. 排序特征
+#### 1. Ranking Features
 
-- **embedding_score (语义相似度)**：
-  - 来自 M2 的文本嵌入余弦相似度
-  - 范围：0-1
+- **embedding (Semantic Similarity)**:
+  - From M2's text embedding cosine similarity
+  - Range: 0-1
 
-- **skill_overlap (技能覆盖率)**：
-  - 基于标准化技能词表（180+ 技能）的匹配率
-  - 公式：`matched_skills / job_required_skills`
-  - 范围：0-1
+- **skill_overlap (Skill Coverage Rate)**:
+  - Matching rate based on standardized skills vocabulary (180+ skills)
+  - Formula: `matched_skills / job_required_skills`
+  - Range: 0-1
 
-- **keyword_bonus (关键词加分)**：
-  - 高优先级技能匹配加分（如 Python、Machine Learning、LLM 等）
-  - 高优先级技能权重 1.5x
-  - 归一化到 0-1 范围
+- **keyword_bonus (Keyword Bonus)**:
+  - Bonus for matching high-priority skills (e.g., Python, Machine Learning, LLM, etc.)
+  - High-priority skill weight 1.5x
+  - Normalized to 0-1 range
 
-- **gap_penalty (缺失惩罚)**：
-  - 缺失关键技能的惩罚（如 Python、SQL 等核心技能）
-  - 关键技能缺失权重 2.0x
-  - 归一化到 0-1 范围
+- **gap_penalty (Missing Penalty)**:
+  - Penalty for missing critical skills (e.g., Python, SQL, etc.)
+  - Critical skill missing weight 2.0x
+  - Normalized to 0-1 range
 
-#### 2. 打分公式
+#### 2. Scoring Formula
 
 ```
-final_score = w1 * embedding_score
+final_score = w1 * embedding
             + w2 * skill_overlap
             + w3 * keyword_bonus
             - w4 * gap_penalty
 ```
 
-默认权重配置（可通过 YAML 调整）：
+Default weight configuration (adjustable via YAML):
 - `w1 (embedding)`: 0.4
 - `w2 (skill_overlap)`: 0.3
 - `w3 (keyword_bonus)`: 0.2
 - `w4 (gap_penalty)`: 0.1
 
-#### 3. 配置文件
+#### 3. Configuration File
 
-排序权重通过 `config/ranking_config.yaml` 配置，支持：
-- 调整各特征权重
-- 定义高优先级关键词列表
-- 定义关键技能列表
-- 调整奖惩倍数
-- **无需修改代码即可调整排序策略**
+Ranking weights configured through `config/ranking_config.yaml`, supporting:
+- Adjust feature weights
+- Define high-priority keyword list
+- Define critical skills list
+- Adjust reward/penalty multipliers
+- **Adjust ranking strategy without modifying code**
 
-#### 4. 可解释性
+#### 4. Explainability
 
-系统自动生成排名第一职位的详细解释，包括：
-- 各维度特征分数
-- 匹配技能列表
-- 缺失技能列表
-- 综合得分计算过程
+The system automatically generates detailed explanations for the top-ranked job, including:
+- Feature scores for each dimension
+- Matched skills list
+- Missing skills list
+- Comprehensive score calculation process
 
-示例解释输出：
+Example explanation output:
 ```
-【NLP Engineer - Conversational AI】排名第一的原因：
+【NLP Engineer - Conversational AI】Ranked #1 for the following reasons:
 
-1. 语义相似度: 0.682 (权重: 0.4)
-   - 职位描述与简历内容高度匹配
+1. Semantic Similarity: 0.682 (Weight: 0.4)
+   - Job description highly aligned with resume content
 
-2. 技能覆盖率: 0.875 (权重: 0.3)
-   - 匹配技能 (7个): NLP, Prompt Engineering, Python, ...
-   - 缺失技能 (1个): Dialogue Systems
+2. Skill Coverage: 0.875 (Weight: 0.3)
+   - Matched skills (7): NLP, Prompt Engineering, Python, ...
+   - Missing skills (1): Dialogue Systems
 
-3. 关键词加分: 0.650 (权重: 0.2)
-   - 匹配高优先级技能
+3. Keyword Bonus: 0.650 (Weight: 0.2)
+   - Matches high-priority skills
 
-4. 缺失惩罚: 0.100 (权重: 0.1)
-   - 缺失关键技能的惩罚
+4. Gap Penalty: 0.100 (Weight: 0.1)
+   - Penalty for missing critical skills
 
-综合得分: 0.723
+Overall Score: 0.723
 ```
 
-### M4.1：技能自动提取与合并（Skills Auto-Extract & Merge）
+### M4.1: Skills Auto-Extract & Merge
 
-#### 问题背景
+#### Background
 
-在传统的技能匹配中，系统仅依赖用户在 `resume.skills` 列表中明确列出的技能。这会导致以下问题：
+In traditional skill matching, the system only relies on skills explicitly listed in the `resume.skills` list. This leads to the following issues:
 
-1. **过度严格的匹配**：很多技能实际上在简历的 `experience`、`projects` 或 `education` 中提到，但未在 `skills` 列表中列出
-2. **误判技能缺口**：例如简历中提到 "conducted NER research" 或 "published papers on entity extraction"，但因为 `skills` 列表没写 "NER" 或 "Entity Extraction"，就被判定为缺失技能
+1. **Overly Strict Matching**: Many skills are actually mentioned in `experience`, `projects`, or `education`, but not listed in the `skills` list
+2. **False Skill Gaps**: For example, the resume mentions "conducted NER research" or "published papers on entity extraction," but because "NER" or "Entity Extraction" is not in the `skills` list, it's judged as a missing skill
 
-#### 解决方案
+#### Solution
 
-系统自动从简历文本中提取技能，并与用户提供的技能列表合并：
+The system automatically extracts skills from resume text and merges them with the user-provided skills list:
 
-**核心逻辑：**
+**Core Logic:**
 ```
 merged_skills = union(
     user_provided_resume.skills,
@@ -808,66 +832,66 @@ merged_skills = union(
 )
 ```
 
-**提取流程：**
-1. **文本组装**：将 `resume.education`、`resume.projects`、`resume.experience` 组合成一段文本
-2. **词汇匹配**：基于 `skills_vocabulary.txt`（包含 180+ 技能词）进行匹配
-3. **智能边界检测**：使用正则表达式的词边界（`\b`），避免误匹配（例如 "C" 不会匹配 "Cloud", "React" 不会匹配 "Reactivity"）
-4. **特殊字符处理**：正确处理 "C++"、"C#"、".NET" 等包含特殊字符的技能
-5. **大小写规范化**：匹配时忽略大小写，但保留词汇表中的原始大小写
-6. **去重合并**：将提取的技能与用户提供的技能合并，去重后返回
+**Extraction Process:**
+1. **Text Assembly**: Combines `resume.education`, `resume.projects`, `resume.experience` into one text
+2. **Vocabulary Matching**: Matches based on `skills_vocabulary.txt` (contains 180+ skill words)
+3. **Smart Boundary Detection**: Uses regex word boundaries (`\b`) to avoid false matches (e.g., "C" won't match "Cloud", "React" won't match "Reactivity")
+4. **Special Character Handling**: Correctly handles skills with special characters like "C++", "C#", ".NET"
+5. **Case Normalization**: Ignores case during matching but preserves original case from vocabulary
+6. **Deduplication and Merging**: Merges extracted skills with user-provided skills, deduplicates, and returns
 
-**示例：**
+**Example:**
 ```python
-# 用户提供的技能
+# User-provided skills
 resume.skills = ["Python", "Machine Learning"]
 
-# 简历文本中提到的内容
+# Content mentioned in resume text
 resume.projects = "Conducted research on NER and entity extraction..."
 resume.experience = "Published papers on Named Entity Recognition..."
 
-# 自动提取的技能
+# Automatically extracted skills
 extracted_skills = ["NER", "Entity Extraction", "Research", "Publication"]
 
-# 最终合并后的技能（用于匹配）
+# Final merged skills (used for matching)
 merged_skills = ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication"]
 ```
 
-#### 软技能过滤
+#### Soft Skills Filtering
 
-为了避免对候选人过度惩罚，系统在计算 `gap_penalty` 时会**过滤掉软技能**：
+To avoid over-penalizing candidates, the system **filters out soft skills** when calculating `gap_penalty`:
 
-**软技能列表**（不计入缺失惩罚）：
-- Communication（沟通）
-- Leadership（领导力）
-- Collaboration（协作）
-- Teamwork（团队合作）
-- Problem Solving（问题解决）
-- Critical Thinking（批判性思维）
-- Time Management（时间管理）
-- Adaptability（适应性）
-- 等等...
+**Soft Skills List** (not counted in missing penalty):
+- Communication
+- Leadership
+- Collaboration
+- Teamwork
+- Problem Solving
+- Critical Thinking
+- Time Management
+- Adaptability
+- etc...
 
-**为什么过滤软技能？**
-- 软技能很重要，但缺失不应该像技术技能那样被严重扣分
-- 软技能难以在简历中量化，容易被遗漏
-- 软技能更多是在面试中评估，而非简历筛选阶段的硬性要求
+**Why filter soft skills?**
+- Soft skills are important, but missing them should not be penalized as severely as technical skills
+- Soft skills are difficult to quantify in resumes and easily omitted
+- Soft skills are more assessed during interviews rather than resume screening hard requirements
 
-**注意：** 软技能仍然会：
-- ✅ 出现在 `matched_skills` 中（如果匹配）
-- ✅ 出现在 `gap_skills` 中（如果缺失）
-- ✅ 可用于 `keyword_bonus` 加分
-- ✅ 出现在 RAG 解释的 evidence 中
-- ❌ **不会**计入 `gap_penalty` 扣分
+**Note:** Soft skills will still:
+- ✅ Appear in `matched_skills` (if matched)
+- ✅ Appear in `gap_skills` (if missing)
+- ✅ Be used for `keyword_bonus` bonus
+- ✅ Appear in RAG explanation evidence
+- ❌ **NOT** counted in `gap_penalty` deduction
 
-#### 实现位置
+#### Implementation Location
 
-**新增文件：** `backend/services/utils.py`
-- `extract_skills_from_text(text, vocab)` - 从文本中提取技能
-- `merge_resume_skills(resume, vocab)` - 合并用户技能与提取技能
-- `filter_soft_skills(skills)` - 过滤软技能
-- `SOFT_SKILLS` - 软技能常量集合
+**New File:** `backend/services/utils.py`
+- `extract_skills_from_text(text, vocab)` - Extract skills from text
+- `merge_resume_skills(resume, vocab)` - Merge user skills with extracted skills
+- `filter_soft_skills(skills)` - Filter soft skills
+- `SOFT_SKILLS` - Soft skills constant set
 
-**调用位置：** `backend/services/ranking.py` 的 `rank_jobs_with_features` 函数
+**Calling Location:** `backend/services/ranking.py`'s `rank_jobs_with_features` function
 ```python
 # === SKILLS AUTO-EXTRACT & MERGE ===
 # Line 247-255
@@ -876,16 +900,16 @@ merged_skills = merge_resume_skills(resume, vocab_list)
 resume_skills_normalized = normalize_skills(merged_skills, vocab)
 ```
 
-**使用位置：**
-- ✅ `matched_skills` 计算 - 使用 merged skills
-- ✅ `gap_skills` 计算 - 使用 merged skills
-- ✅ `skill_overlap` 计算 - 使用 merged skills
-- ✅ `keyword_bonus` 计算 - 使用 merged skills
-- ✅ `gap_penalty` 计算 - 使用 merged skills（过滤软技能后）
+**Usage Locations:**
+- ✅ `matched_skills` calculation - Uses merged skills
+- ✅ `gap_skills` calculation - Uses merged skills
+- ✅ `skill_overlap` calculation - Uses merged skills
+- ✅ `keyword_bonus` calculation - Uses merged skills
+- ✅ `gap_penalty` calculation - Uses merged skills (after filtering soft skills)
 
-#### 验收示例
+#### Acceptance Example
 
-**场景：** 简历中提到了 NER 研究，但未在 skills 列表中列出
+**Scenario:** Resume mentions NER research but doesn't list it in the skills list
 
 ```json
 {
@@ -898,119 +922,119 @@ resume_skills_normalized = normalize_skills(merged_skills, vocab)
 }
 ```
 
-**旧行为（问题）：**
+**Old Behavior (Problem):**
 - `matched_skills`: ["Python", "Machine Learning"]
-- `gap_skills`: ["NER", "Entity Extraction", "Research", "Publication"]  ❌ 误判为缺失
+- `gap_skills`: ["NER", "Entity Extraction", "Research", "Publication"]  ❌ Falsely judged as missing
 
-**新行为（修复）：**
+**New Behavior (Fixed):**
 - `merged_skills`: ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication", "Literature Review"]
 - `matched_skills`: ["Python", "Machine Learning", "NER", "Entity Extraction", "Research", "Publication"]
-- `gap_skills`: []  ✅ 正确识别
+- `gap_skills`: []  ✅ Correctly identified
 
-### M4：RAG 可解释层架构
+### M4: RAG Explanation Layer Architecture
 
-#### RAG 在系统中的位置
+#### RAG's Position in the System
 
-RAG（Retrieval-Augmented Generation）层是 **纯解释层**，位于排序之后，**不参与职位排序逻辑**。整个推荐流程如下：
+The RAG (Retrieval-Augmented Generation) layer is a **pure explanation layer**, positioned after ranking, **not involved in job ranking logic**. The complete recommendation flow is as follows:
 
 ```
-1. [M2 语义检索] 使用 embedding 计算所有职位与简历的相似度
+1. [M2 Semantic Retrieval] Calculate similarity between all jobs and resume using embedding
            ↓
-2. [M3 可解释排序] 基于多维度特征（embedding + skill + keyword + gap）计算最终得分并排序
+2. [M3 Explainable Ranking] Calculate final score based on multi-dimensional features (embedding + skill + keyword + gap) and rank
            ↓
-3. [M3 Top-K 选择] 选出排名前 K 的职位（排序已确定，不再改变）
+3. [M3 Top-K Selection] Select top K jobs (ranking is fixed, won't change)
            ↓
-4. [M4 RAG 解释层] 对每个 Top-K 职位生成基于证据的解释
-   ├─ 证据构建：提取职位和简历的结构化证据
-   ├─ 智能检索：选择最相关的证据片段
-   └─ LLM 生成：基于证据生成 explanation / gap_analysis / improvement_suggestions
+4. [M4 RAG Explanation Layer] Generate evidence-based explanations for each Top-K job
+   ├─ Evidence Construction: Extract structured evidence from jobs and resumes
+   ├─ Intelligent Retrieval: Select most relevant evidence fragments
+   └─ LLM Generation: Generate explanation / gap_analysis / improvement_suggestions based on evidence
            ↓
-5. [返回结果] 包含排序、特征、RAG 解释的完整推荐结果
+5. [Return Results] Complete recommendation results including ranking, features, and RAG explanations
 ```
 
-**关键约束：**
-- M4 的 RAG 层 **仅用于生成解释文本**
-- **不改变** M3 的 `final_score` 和排序顺序
-- LLM 输出必须基于证据，禁止幻觉
+**Key Constraints:**
+- M4's RAG layer **only used to generate explanation text**
+- **Does not change** M3's `final_score` and ranking order
+- LLM output must be evidence-based, hallucination prohibited
 
-#### RAG 的检索对象
+#### What RAG Retrieves
 
-RAG 检索的对象是 **职位和简历的文本片段（chunks）**，具体包括：
+RAG retrieves **text fragments (chunks) from jobs and resumes**, specifically including:
 
-**职位证据（Job Evidence）：**
-- `title`：职位名称
-- `responsibilities`：岗位职责
-- `requirements_text`：任职要求
-- `skills`：要求技能列表
+**Job Evidence:**
+- `title`: Job title
+- `responsibilities`: Job responsibilities
+- `requirements_text`: Job requirements
+- `skills`: Required skills list
 
-**简历证据（Resume Evidence）：**
-- `education`：教育背景
-- `projects`：项目经历
-- `experience`：工作经验
-- `skills`：技能列表
+**Resume Evidence:**
+- `education`: Educational background
+- `projects`: Project experience
+- `experience`: Work experience
+- `skills`: Skills list
 
-**检索流程：**
-1. **文本分块（Chunking）**：将职位描述和简历内容按句子切分成小片段（约 200 字符）
-2. **语义嵌入**：使用 sentence-transformers 模型对所有 chunks 计算向量表示
-3. **相似度计算**：计算职位 chunks 与简历 chunks 之间的交叉相似度
-4. **Top-K 选择**：选出最相关的 3 个职位 chunks 和 3 个简历 chunks 作为证据
+**Retrieval Process:**
+1. **Text Chunking**: Split job descriptions and resume content into small fragments by sentences (about 200 characters)
+2. **Semantic Embedding**: Calculate vector representations for all chunks using sentence-transformers model
+3. **Similarity Calculation**: Calculate cross-similarity between job chunks and resume chunks
+4. **Top-K Selection**: Select the most relevant 3 job chunks and 3 resume chunks as evidence
 
-**示例：**
-- 职位 chunk: `[responsibilities] Design and implement scalable NLP systems for production chatbots.`
-- 简历 chunk: `[projects] Built chatbot using GPT-4 and RAG, serving 500K+ users with 90% satisfaction rate.`
-- 这两个 chunks 语义相似度高，会被选为证据传递给 LLM
+**Example:**
+- Job chunk: `[responsibilities] Design and implement scalable NLP systems for production chatbots.`
+- Resume chunk: `[projects] Built chatbot using GPT-4 and RAG, serving 500K+ users with 90% satisfaction rate.`
+- These two chunks have high semantic similarity and will be selected as evidence passed to LLM
 
-#### LLM 在系统中的角色
+#### LLM's Role in the System
 
-LLM（大语言模型）**仅承担"解释生成"角色**，不参与任何排序或推荐决策：
+LLM (Large Language Model) **only assumes "explanation generation" role**, not involved in any ranking or recommendation decisions:
 
-**LLM 的职责：**
-1. **阅读证据**：接收检索出的最相关职位和简历片段
-2. **生成解释**：基于证据回答"为什么这个职位适合候选人"
-3. **分析差距**：基于证据指出候选人缺少的关键技能
-4. **提供建议**：给出具体可行的提升建议
+**LLM's Responsibilities:**
+1. **Read Evidence**: Receive the most relevant job and resume fragments retrieved
+2. **Generate Explanation**: Answer "why this job suits the candidate" based on evidence
+3. **Analyze Gaps**: Point out key skills the candidate lacks based on evidence
+4. **Provide Suggestions**: Give specific actionable improvement suggestions
 
-**LLM 不做的事：**
-- ❌ 不计算匹配分数（由 M3 ranking 层完成）
-- ❌ 不决定职位排序（由 M3 final_score 决定）
-- ❌ 不检索职位（由 M2 embedding 完成）
-- ❌ 不评估技能匹配（由 M3 skill_overlap 完成）
+**What LLM Does Not Do:**
+- ❌ Does not calculate match scores (completed by M3 ranking layer)
+- ❌ Does not decide job ranking (determined by M3 final_score)
+- ❌ Does not retrieve jobs (completed by M2 embedding)
+- ❌ Does not evaluate skill matching (completed by M3 skill_overlap)
 
-**使用的 LLM 模型：**
-- 默认：`gpt-4o-mini`（OpenAI）
-- 优势：成本低、速度快、适合生成简短解释
-- 温度设置：0.3（低温度保证输出稳定、事实性强）
+**LLM Model Used:**
+- Default: `gpt-4o-mini` (OpenAI)
+- Advantages: Low cost, fast speed, suitable for generating short explanations
+- Temperature setting: 0.3 (low temperature ensures stable, fact-based output)
 
-#### 如何避免 LLM 编造内容
+#### How to Prevent LLM Fabrication
 
-为了防止 LLM 幻觉（hallucination），我们采取了多层防护措施：
+To prevent LLM hallucination, we adopt multi-layer protection measures:
 
-**1. 证据约束（Evidence Grounding）**
-- LLM 只能看到通过检索选出的证据片段
-- Prompt 明确要求："Based ONLY on the evidence provided below"
-- 禁止 LLM 添加未在证据中出现的信息
+**1. Evidence Constraint (Evidence Grounding)**
+- LLM can only see evidence fragments selected through retrieval
+- Prompt explicitly requires: "Based ONLY on the evidence provided below"
+- Prohibits LLM from adding information not present in evidence
 
-**2. 结构化 Prompt**
-- 提供清晰的职位证据和简历证据
-- 明确列出 `matched_skills` 和 `gap_skills`（由 M3 计算得出）
-- 要求 LLM 引用具体证据内容
+**2. Structured Prompt**
+- Provides clear job evidence and resume evidence
+- Explicitly lists `matched_skills` and `gap_skills` (calculated by M3)
+- Requires LLM to cite specific evidence content
 
-**3. 低温度生成**
-- 设置 `temperature=0.3`（默认是 1.0）
-- 低温度使输出更确定性、更贴近事实
-- 减少创造性发挥，增强事实准确性
+**3. Low Temperature Generation**
+- Set `temperature=0.3` (default is 1.0)
+- Low temperature makes output more deterministic and fact-based
+- Reduces creative elaboration, enhances factual accuracy
 
-**4. 格式化输出**
-- 要求 LLM 按照固定格式输出（EXPLANATION / GAP_ANALYSIS / IMPROVEMENT_SUGGESTIONS）
-- 自动解析和验证输出格式
-- 失败时回退到基于规则的简单解释
+**4. Formatted Output**
+- Requires LLM to output in fixed format (EXPLANATION / GAP_ANALYSIS / IMPROVEMENT_SUGGESTIONS)
+- Automatically parses and validates output format
+- Falls back to rule-based simple explanations on failure
 
-**5. 检索质量保证**
-- 使用与 M2 相同的 sentence-transformers 模型进行检索
-- 基于余弦相似度选择最相关的证据
-- 确保传递给 LLM 的证据与职位-简历匹配度高
+**5. Retrieval Quality Assurance**
+- Uses same sentence-transformers model as M2 for retrieval
+- Selects most relevant evidence based on cosine similarity
+- Ensures evidence passed to LLM has high job-resume match
 
-**Prompt 示例片段：**
+**Prompt Example Snippet:**
 ```
 CRITICAL RULES:
 - Base your analysis ONLY on the evidence provided above
@@ -1019,8 +1043,8 @@ CRITICAL RULES:
 - Keep each section concise and focused
 ```
 
-**后备机制：**
-如果 LLM API 调用失败（网络问题、API key 未设置等），系统会回退到基于规则的简单解释：
+**Fallback Mechanism:**
+If LLM API call fails (network issues, API key not set, etc.), the system falls back to rule-based simple explanations:
 ```python
 {
     "explanation": "This position matches 4 of your skills: Python, NLP, LLM, Transformers. The overall compatibility score is 0.68.",
@@ -1029,230 +1053,227 @@ CRITICAL RULES:
 }
 ```
 
-## M3 配置说明
+## M3 Configuration Description
 
-### 排序权重配置
+### Ranking Weight Configuration
 
-编辑 `backend/config/ranking_config.yaml` 调整排序策略：
+Edit `backend/config/ranking_config.yaml` to adjust ranking strategy:
 
 ```yaml
 weights:
-  embedding: 0.4        # 语义相似度权重
-  skill_overlap: 0.3    # 技能覆盖率权重
-  keyword_bonus: 0.2    # 关键词加分权重
-  gap_penalty: 0.1      # 缺失惩罚权重
+  embedding: 0.4        # Semantic similarity weight
+  skill_overlap: 0.3    # Skill coverage rate weight
+  keyword_bonus: 0.2    # Keyword bonus weight
+  gap_penalty: 0.1      # Missing penalty weight
 
 keywords:
-  high_priority:        # 高优先级关键词
+  high_priority:        # High-priority keywords
     - "Python"
     - "Machine Learning"
     - "LLM"
-    # ... 更多
-  high_priority_multiplier: 1.5  # 加分倍数
+    # ... more
+  high_priority_multiplier: 1.5  # Bonus multiplier
 
 gap_penalty:
-  critical_skills:      # 关键技能
+  critical_skills:      # Critical skills
     - "Python"
     - "SQL"
-  critical_penalty_multiplier: 2.0  # 惩罚倍数
+  critical_penalty_multiplier: 2.0  # Penalty multiplier
 ```
 
-### 技能词表
+### Skills Vocabulary
 
-`backend/data/skills_vocabulary.txt` 包含 180+ 标准化技能，涵盖：
-- 编程语言（Python, Java, JavaScript, ...）
-- Web 框架（FastAPI, Django, React, ...）
-- ML/AI（Machine Learning, Deep Learning, TensorFlow, ...）
-- NLP/LLM（Transformers, BERT, GPT, RAG, ...）
-- 推荐/搜索（Recommendation Systems, Elasticsearch, ...）
-- 数据工程（Spark, Airflow, ETL, ...）
-- 云/基础设施（AWS, Docker, Kubernetes, ...）
+`backend/data/skills_vocabulary.txt` contains 180+ standardized skills, covering:
+- Programming languages (Python, Java, JavaScript, ...)
+- Web frameworks (FastAPI, Django, React, ...)
+- ML/AI (Machine Learning, Deep Learning, TensorFlow, ...)
+- NLP/LLM (Transformers, BERT, GPT, RAG, ...)
+- Recommendation/Search (Recommendation Systems, Elasticsearch, ...)
+- Data engineering (Spark, Airflow, ETL, ...)
+- Cloud/Infrastructure (AWS, Docker, Kubernetes, ...)
 
-可根据需要添加新技能到词表。
+Can add new skills to vocabulary as needed.
 
-## M5 评估说明
+## M5 Evaluation Description (Old Version, Replaced by M7)
 
-### 评估目标
+> ⚠️ **Notice**: M5 is the initial evaluation method, and its main functionality has been replaced by M7's Learning to Rank (LTR) system. M7 uses full 1-5 labels (750 pairs) and LOOCV + Ablation evaluation, which is more comprehensive and rigorous than M5's Top-15 partial labels (105 pairs, 0-3 scale). The following content is for historical reference only.
 
-M5 引入了完整的评估体系，用于量化职位推荐系统的性能：
-- **数据对齐**：为 jobs.jsonl 和 resumes.jsonl 添加唯一 ID（job_id, resume_id）
-- **弱监督标签**：使用 LLM（GPT-4o-mini）为 Top-15 推荐生成 0-3 分级标签
-- **量化指标**：Precision@K 和 NDCG@K 衡量推荐质量
-- **人工校正**：支持人工审核和修正 LLM 生成的标签
+### Evaluation Objectives (M5 Old Version)
 
-### 标签体系（0-3 分级）
+M5 introduces an initial evaluation system to quantify job recommendation system performance:
+- **Data Alignment**: Added unique IDs (job_id, resume_id) to jobs.jsonl and resumes.jsonl
+- **Weak Supervision Labels**: Uses LLM (GPT-4o-mini) to generate 0-3 graded labels for Top-15 recommendations (**Replaced by M7's full 1-5 labels**)
+- **Quantitative Metrics**: Precision@K and NDCG@K measure recommendation quality
+- **Manual Correction**: Supports manual review and correction of LLM-generated labels (**Deprecated in M7**)
 
-| 标签 | 名称 | 定义 |
+### Label System (0-3 Grading) (M5 Old Version, M7 Changed to 1-5 Scale)
+
+> ⚠️ **Deprecated**: M7 uses 1-5 label system to replace this 0-3 system.
+
+| Label | Name | Definition |
 |------|------|------|
-| **0** | 不匹配 | 明显不相关或方向不一致 |
-| **1** | 弱匹配 | 有少量相关点，但缺少关键技能或方向偏差 |
-| **2** | 中等匹配 | 方向一致，部分技能满足，存在一些技能差距 |
-| **3** | 强匹配 | 方向高度一致，关键技能覆盖率高，技能差距少 |
+| **0** | Not Matching | Obviously irrelevant or inconsistent direction |
+| **1** | Weak Match | Some relevant points but missing key skills or direction deviation |
+| **2** | Medium Match | Consistent direction, some skills met, with some skill gaps |
+| **3** | Strong Match | Highly consistent direction, high key skill coverage, few skill gaps |
 
-**相关性阈值**：标签 ≥ 2（中等匹配或强匹配）被视为"相关职位"
+**Relevance Threshold**: Label ≥ 2 (medium or strong match) is considered "relevant job"
 
-### 评估指标
+### Evaluation Metrics
 
-**Precision@K**（精确率）：
-- 定义：Top-K 推荐中相关职位的比例
-- 公式：`Precision@K = (Top-K 中相关职位数) / K`
-- 值域：0.0 - 1.0，越高越好
+**Precision@K** (Precision):
+- Definition: Proportion of relevant jobs in Top-K recommendations
+- Formula: `Precision@K = (Number of relevant jobs in Top-K) / K`
+- Range: 0.0 - 1.0, higher is better
 
-**NDCG@K**（归一化折损累积增益）：
-- 定义：考虑排序位置的质量评分
-- 公式：`NDCG@K = DCG@K / IDCG@K`
-- 值域：0.0 - 1.0，越高越好
-- 特点：排在前面的职位权重更高
+**NDCG@K** (Normalized Discounted Cumulative Gain):
+- Definition: Quality score considering ranking position
+- Formula: `NDCG@K = DCG@K / IDCG@K`
+- Range: 0.0 - 1.0, higher is better
+- Feature: Jobs ranked higher have more weight
 
-### 如何运行评估
+### How to Run Evaluation (M5 Old Version, Deprecated)
 
-#### 1. 生成 LLM 标签
+> ⚠️ **Deprecated**: The following M5 evaluation process has been replaced by M7's LOOCV + Ablation Study. Please refer to the **M7: Learning to Rank (LTR) Complete Pipeline** section for the new evaluation method.
+
+#### 1. Generate LLM Labels (Deprecated, M7 uses generate_labels.py to generate full 1-5 labels)
 
 ```bash
 cd backend/eval
 python generate_labels.py
 ```
 
-这将生成：
-- `labels_suggested.jsonl` - LLM 生成的标签（JSONL 格式）
-- `labels_final.csv` - 人工校正模板（CSV 格式）
+~~This will generate:
+- `labels_suggested.jsonl` - LLM-generated labels (JSONL format)~~ (**M7 overwrote with 750 pairs of 1-5 labels**)
+- ~~`labels_final.csv` - Manual correction template (CSV format)~~ (**M7 deprecated**)
 
-#### 2. 人工校正（可选但推荐）
+#### 2. Manual Correction (Deprecated, M7 no longer needs)
 
-打开 `backend/eval/labels_final.csv`，在 `final_label` 列填入校正后的标签：
+~~Open `backend/eval/labels_final.csv`, fill in corrected labels in the `final_label` column~~ (**M7 deprecated this file**)
 
-```csv
-resume_id,job_id,suggested_label,final_label,confidence,evidence_1,evidence_2,notes
-resume_001,job_001,3,3,0.95,"Resume: Ph.D. in RecSys","Job: Senior ML Engineer","..."
-resume_001,job_002,2,1,0.70,"...","...","人工修正：技能差距较大，降为弱匹配"
-```
-
-- 留空表示接受 LLM 标签
-- 填入 0-3 表示人工修正
-
-#### 3. 运行评估
+#### 3. Run Evaluation (Deprecated, M7 uses scripts/eval_ablation.py)
 
 ```bash
 cd backend/eval
-python run_eval.py
+python run_eval.py  # Deprecated
 ```
 
-评估结果将保存到：
-- `eval_results.json` - 详细结果（JSON 格式）
-- 控制台输出汇总指标
+~~Evaluation results will be saved to:
+- `eval_results.json` - Detailed results (JSON format)~~ (**M7 deprecated, replaced with results/ablation_results.json**)
+- ~~Console output summary metrics~~
 
-#### 4. 查看评估报告
+#### 4. View Evaluation Report (M7 still retained, but content updated)
 
 ```bash
 cat backend/eval/eval_report.md
 ```
 
-报告包含：
-- 数据规模与分布
-- 标签体系说明
-- 评估指标定义
-- 结果解读指南
-- Weak Labels 说明与改进建议
+~~The report includes~~ (**M7 updated report content**):
+- Data scale and distribution (M7: 750 pairs vs M5: 105 pairs)
+- Label system description (M7: 1-5 scale vs M5: 0-3 scale)
+- Evaluation metrics definitions (Same)
+- Results interpretation guide (M7: LOOCV + Ablation vs M5: Simple validation)
+- Weak Labels explanation and improvement suggestions
 
-### 评估数据规模
+### Evaluation Data Scale
 
-当前评估基于：
-- **7 份简历** × **Top-15 职位** = **105 个标注对**
-- **标签来源**：LLM（GPT-4o-mini）独立生成（无信息泄漏）
-- **平均置信度**：0.70
-- **标签分布**：47.6% 弱匹配，31.4% 中等匹配，21.0% 强匹配
+Current evaluation based on:
+- **M5 Old Version (Deprecated)**: 7 resumes × Top-15 jobs = 105 annotation pairs (0-3 scale)
+- **M7 New Version (Current)**: 15 resumes × 50 jobs = **750 annotation pairs** (1-5 scale)
+- **Label Source**: LLM (GPT-4o-mini) independently generated (no information leakage)
+- **Coverage**: Full coverage (all resume×job combinations)
 
-### 评估公正性保证
+### Evaluation Fairness Guarantee
 
-**防止评估偏置（Label Leakage Prevention）**：
+**Prevent Evaluation Bias (Label Leakage Prevention)**:
 
-为避免评估偏置，LLM 标注阶段不暴露任何系统排序或打分信息，所有标签均基于原始 JD 与 Resume 独立生成。
+To avoid evaluation bias, the LLM annotation stage does not expose any system ranking or scoring information; all labels are generated independently based on original JD and Resume.
 
-具体措施：
-- ✅ LLM 仅接收原始简历和职位描述文本
-- ✅ 不提供系统计算的 matched_skills、gap_skills、final_score
-- ✅ LLM 被明确告知其角色是"独立的人工评估者"
-- ✅ 确保标签反映真实判断，而非系统输出的复述
+Specific measures:
+- ✅ LLM only receives original resume and job description text
+- ✅ Does not provide system-calculated matched_skills, gap_skills, final_score
+- ✅ LLM is explicitly told its role is "independent human evaluator"
+- ✅ Ensures labels reflect true judgment, not system output paraphrase
 
-### Weak Labels 说明
+### Weak Labels Description
 
-**什么是 Weak Labels？**
-- LLM 自动生成的标签，非人工标注的金标准
-- 优势：快速、低成本、可扩展
-- 局限：准确性不如人工，建议抽查并修正
+**What are Weak Labels?**
+- Labels automatically generated by LLM, not manually annotated gold standard
+- Advantages: Fast, low-cost, scalable
+- Limitations: Less accurate than manual annotation, recommend spot-checking and corrections
 
-**推荐流程：**
-1. LLM 快速生成 suggested_label（已完成）
-2. 人工抽查 20-30% 并修正 final_label
-3. 重新运行评估获得更准确的结果
+**Recommended Process:**
+1. LLM quickly generates suggested_label (completed)
+2. Manually spot-check 20-30% and correct final_label
+3. Re-run evaluation for more accurate results
 
-### 数据 ID 说明
+### Data ID Description
 
-**为什么添加 job_id 和 resume_id？**
-- 仅用于评估对齐，不影响推荐逻辑
+**Why add job_id and resume_id?**
+- Only used for evaluation alignment, does not affect recommendation logic
 - job_id: job_001, job_002, ..., job_022
 - resume_id: resume_001, resume_002, ..., resume_007
-- 在 `/recommend_jobs` 接口返回的 JobRecommendation 中包含 job_id
+- JobRecommendation returned by `/recommend_jobs` endpoint includes job_id
 
-## M6：一键运行 Demo（Streamlit 交互界面）
+## M6: One-Click Demo (Streamlit Interactive Interface)
 
-### 功能概述
+### Feature Overview
 
-M6 提供了一个基于 Streamlit 的交互式 Web 界面，让您无需手动编写代码即可体验完整的职位匹配功能：
-- 📄 多种简历输入方式（文本框输入或上传 TXT 文件）
-- 💼 职位选择（从 jobs.jsonl 数据库选择）
-- 🎯 Top-K 参数配置（推荐职位数量）
-- 🚀 一键匹配并展示结果（包括匹配分数、匹配技能、技能差距）
-- 💡 详细解释（点击按钮查看 RAG 生成的匹配解释、差距分析、提升建议）
+M6 provides a Streamlit-based interactive web interface, allowing you to experience complete job matching features without manually writing code:
+- 📄 Multiple resume input methods (text box input or upload TXT file)
+- 💼 Job selection (choose from jobs.jsonl database)
+- 🎯 Top-K parameter configuration (recommended job count)
+- 🚀 One-click matching and result display (including match scores, matched skills, skill gaps)
+- 💡 Detailed explanations (click button to view RAG-generated match explanations, gap analysis, improvement suggestions)
 
-### 一键运行步骤
+### One-Click Run Steps
 
-#### 前置条件
+#### Prerequisites
 
-确保已完成环境配置和依赖安装（参考上文"如何运行"部分）。
+Ensure environment configuration and dependency installation are completed (refer to "How to Run" section above).
 
-#### 安装 Streamlit
+#### Install Streamlit
 
 ```bash
-# 方式一：使用 requirements.txt（推荐）
+# Method 1: Using requirements.txt (recommended)
 pip install -r frontend/requirements.txt
 
-# 方式二：手动安装
+# Method 2: Manual installation
 pip install streamlit requests
 ```
 
-#### 启动后端服务
+#### Start Backend Service
 
-在**第一个终端**中启动 FastAPI 后端：
+In the **first terminal**, start FastAPI backend:
 
 ```bash
 cd backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-后端启动后，API 将运行在 http://localhost:8000
+After backend starts, API will run at http://localhost:8000
 
-#### 启动前端界面
+#### Start Frontend Interface
 
-在**第二个终端**中启动 Streamlit 前端：
+In the **second terminal**, start Streamlit frontend:
 
 ```bash
-# 确保在项目根目录
+# Ensure in project root directory
 streamlit run frontend/streamlit_app.py
 ```
 
-前端启动后，会自动打开浏览器，访问地址：http://localhost:8501
+After frontend starts, it will automatically open the browser, visiting: http://localhost:8501
 
-**如果浏览器没有自动打开**，请手动访问 http://localhost:8501
+**If browser doesn't automatically open**, manually visit http://localhost:8501
 
-### 使用指南
+### Usage Guide
 
-#### 1. 输入简历
+#### 1. Input Resume
 
-**方式一：手动输入**
-- 选择"Manual Text Input"
-- 在文本框中输入简历内容
-- 建议按照以下格式组织（系统会自动解析）：
+**Method 1: Manual Input**
+- Select "Manual Text Input"
+- Enter resume content in text box
+- Suggest organizing in the following format (system will auto-parse):
   ```
   Education
   Bachelor of Science in Computer Science, MIT, 2020
@@ -1269,68 +1290,68 @@ streamlit run frontend/streamlit_app.py
   - Improved recommendation accuracy by 25%
   ```
 
-**方式二：上传文件**
-- 选择"Upload TXT File"
-- 点击"Browse files"上传 TXT 格式的简历文件
+**Method 2: Upload File**
+- Select "Upload TXT File"
+- Click "Browse files" to upload TXT format resume file
 
-#### 2. 选择职位（可选）
+#### 2. Select Job (Optional)
 
-- 从下拉列表中选择职位
-  - 列表显示格式：`job_id: 职位名称`
-  - 选择"-- None (match all jobs) --"表示匹配所有职位
-  - 点击"View Job Details"可查看职位详情
+- Select job from dropdown list
+  - List displays format: `job_id: Job Title`
+  - Select "-- None (match all jobs) --" to match all jobs
+  - Click "View Job Details" to view job details
 
-#### 3. 设置匹配参数
+#### 3. Set Matching Parameters
 
-- 使用滑块调整 **Top-K**（推荐职位数量）
-- 范围：1-20，默认值：5
+- Use slider to adjust **Top-K** (recommended job count)
+- Range: 1-20, default value: 5
 
-#### 4. 运行匹配
+#### 4. Run Matching
 
-- 点击 **"🚀 Run Match"** 按钮
-- 系统将：
-  1. 解析简历内容
-  2. 调用后端 `/recommend_jobs` 接口
-  3. 展示 Top-K 匹配职位
+- Click **"🚀 Run Match"** button
+- System will:
+  1. Parse resume content
+  2. Call backend `/recommend_jobs` endpoint
+  3. Display Top-K matching jobs
 
-#### 5. 查看结果
+#### 5. View Results
 
-匹配结果将显示每个职位的：
-- **职位信息**：标题、公司、地点、级别
-- **匹配分数**：语义相似度评分（百分比）
-- **匹配技能**：简历与职位要求的技能交集
-- **技能差距**：职位要求但简历缺失的技能
+Matching results will display for each job:
+- **Job Information**: Title, company, location, level
+- **Match Score**: Semantic similarity score (percentage)
+- **Matched Skills**: Skill intersection between resume and job requirements
+- **Skill Gaps**: Skills required by job but missing from resume
 
-#### 6. 查看详细解释
+#### 6. View Detailed Explanations
 
-- 点击任意职位下的 **"💡 Explain Match"** 按钮
-- 系统将调用 `/explain` 接口生成详细解释
-- 展开的解释包含：
-  - **Why this job matches**：基于证据的匹配原因
-  - **Gap Analysis**：详细的技能差距分析
-  - **Improvement Suggestions**：可行的提升建议
+- Click **"💡 Explain Match"** button under any job
+- System will call `/explain` endpoint to generate detailed explanations
+- Expanded explanations include:
+  - **Why this job matches**: Evidence-based matching reasons
+  - **Gap Analysis**: Detailed skill gap analysis
+  - **Improvement Suggestions**: Actionable improvement suggestions
 
-### 界面功能说明
+### Interface Feature Description
 
-#### 侧边栏
+#### Sidebar
 
-- **About**：系统简介和使用说明
-- **Backend Status**：实时检查后端服务状态
-  - 绿色：后端正常运行
-  - 红色：后端未启动（请先启动后端服务）
+- **About**: System introduction and usage instructions
+- **Backend Status**: Real-time backend service status check
+  - Green: Backend running normally
+  - Red: Backend not started (please start backend service first)
 
-#### 主界面布局
+#### Main Interface Layout
 
-- **左侧列**：简历输入区域
-- **右侧列**：职位选择区域（可选）
-- **底部**：匹配参数和运行按钮
-- **结果区**：Top-K 职位卡片（按匹配分数排序）
+- **Left Column**: Resume input area
+- **Right Column**: Job selection area (optional)
+- **Bottom**: Matching parameters and run button
+- **Results Area**: Top-K job cards (sorted by match score)
 
-### 示例数据
+### Sample Data
 
-您可以使用以下示例数据快速测试：
+You can use the following sample data for quick testing:
 
-**示例简历（NLP 方向）**：
+**Sample Resume (NLP Direction)**:
 ```
 Education
 Master of Science in Natural Language Processing, Carnegie Mellon University, 2019-2021
@@ -1346,53 +1367,420 @@ Experience
 NLP Engineer at AI Startup (2021-2024): Built LLM-powered products, implemented RAG systems, fine-tuned models for domain adaptation
 ```
 
-然后：
-1. 设置 Top-K = 5
-2. 点击"Run Match"
-3. 查看推荐的 NLP 相关职位（如"NLP Engineer - Conversational AI"、"LLM Engineer"等）
-4. 点击"Explain Match"查看详细匹配解释
+Then:
+1. Set Top-K = 5
+2. Click "Run Match"
+3. View recommended NLP-related jobs (e.g., "NLP Engineer - Conversational AI", "LLM Engineer", etc.)
+4. Click "Explain Match" to view detailed match explanations
 
-### 技术栈
+### Technology Stack
 
-- **前端框架**：Streamlit（轻量级 Python Web 框架）
-- **HTTP 客户端**：requests
-- **后端 API**：FastAPI（详见 M1-M5）
+- **Frontend Framework**: Streamlit (lightweight Python web framework)
+- **HTTP Client**: requests
+- **Backend API**: FastAPI (see M1-M5)
 
-### 故障排除
+### Troubleshooting
 
-**问题：点击"Run Match"后提示"Backend is not running"**
-- 解决：确保后端服务已启动（`uvicorn main:app --reload`）
-- 检查后端是否运行在 http://localhost:8000
-- 查看侧边栏"Backend Status"状态
+**Issue: Prompt "Backend is not running" after clicking "Run Match"**
+- Solution: Ensure backend service is started (`uvicorn main:app --reload`)
+- Check if backend is running at http://localhost:8000
+- View sidebar "Backend Status" status
 
-**问题：解释生成失败**
-- 原因：可能是 OpenAI API Key 未配置或 RAG 服务异常
-- 解决：检查 `.env` 文件中的 `OPENAI_API_KEY` 配置（参考 M4 配置说明）
-- 说明：即使 RAG 失败，匹配功能仍可正常使用
+**Issue: Explanation generation failure**
+- Reason: Possibly OpenAI API Key not configured or RAG service exception
+- Solution: Check `OPENAI_API_KEY` configuration in `.env` file (refer to M4 configuration description)
+- Note: Even if RAG fails, matching feature can still work normally
 
-**问题：简历解析不准确**
-- 解决：建议在简历中明确使用"Education"、"Projects"、"Skills"、"Experience"等节标题
-- 技能建议使用逗号分隔（如"Python, Machine Learning, NLP"）
+**Issue: Resume parsing inaccurate**
+- Solution: Suggest explicitly using section headers like "Education", "Projects", "Skills", "Experience" in resume
+- Suggest separating skills with commas (e.g., "Python, Machine Learning, NLP")
 
-**问题：找不到 jobs.jsonl 文件**
-- 解决：确保 `backend/data/jobs.jsonl` 文件存在
-- 检查 Streamlit 是否从项目根目录运行（`streamlit run frontend/streamlit_app.py`）
+**Issue: Cannot find jobs.jsonl file**
+- Solution: Ensure `backend/data/jobs.jsonl` file exists
+- Check if Streamlit is run from project root directory (`streamlit run frontend/streamlit_app.py`)
 
-## 下一步计划
+## M7: Learning to Rank (LTR) Complete Pipeline
 
-后续 Milestone 将实现：
-- ✅ ~~基于向量嵌入的语义匹配~~（M2 已完成）
-- ✅ ~~批量匹配和排序功能~~（M2 已完成）
-- ✅ ~~可解释的轻量排序层~~（M3 已完成）
-- ✅ ~~集成 LLM 进行更智能的匹配分析和个性化建议~~（M4 已完成）
-- ✅ ~~评估体系与弱监督标签生成~~（M5 已完成）
-- ✅ ~~Streamlit 交互界面 Demo~~（M6 已完成）
-- 数据库集成存储职位和简历数据
-- 用户认证和授权系统
-- 缓存优化（Redis）
-- 日志和监控
-- 更多推荐算法（混合推荐、协同过滤等）
+### Overview
 
-## 许可证
+M7 introduces a complete Learning to Rank (LTR) system. Compared to M3's heuristic ranking, LTR optimizes ranking effect through **learning**.
+
+**Core Improvements:**
+1. **Full Weak Labels (1-5 scale)**: Covers all resume×job combinations (15×50=750 pairs), replacing old version that only annotated top-15 with 0-3 labels
+2. **Pairwise Learning to Rank**: Uses Logistic Regression to learn ranking, not fixed weights
+3. **LOOCV + Ablation**: Strict small-data evaluation, comparing three ranking methods (embedding_only / heuristic / LTR)
+4. **Frontend One-Click Toggle**: Streamlit UI supports enabling/disabling LTR, real-time effect comparison
+
+### Three-Step Complete Process
+
+#### Step 1: Generate Full 1-5 Weak Labels
+
+```bash
+# Set environment variable (requires OpenAI API Key)
+export OPENAI_API_KEY=sk-your-actual-api-key-here
+
+# Generate labels (covering all resume×job combinations)
+cd backend/eval
+python generate_labels.py
+```
+
+**Feature Description:**
+- Traverses all 15×50=750 resume-job combinations
+- LLM independently scores (1-5), **does not leak** system ranking information
+- Automatically backs up old labels to `labels_suggested_OLD_<timestamp>.jsonl`
+- Supports breakpoint resumption (existing (resume_id, job_id) will be skipped)
+- Validates coverage (missing pairs will report error)
+
+**Output Files:**
+- `backend/eval/labels_suggested.jsonl` - Full 750 pairs of labels (1-5 scale)
+
+**Label Definitions (1-5 scale):**
+| Label | Name | Definition |
+|------|------|------|
+| **1** | Not a match | Obviously irrelevant or inconsistent direction |
+| **2** | Weak match | Some relevant points but missing key skills |
+| **3** | Partial match | Consistent direction, some skills met, with gaps |
+| **4** | Good match | Well-aligned direction, high skill coverage, slight gaps |
+| **5** | Strong match | Highly matching, excellent skill coverage, minimal gaps |
+
+**Coverage Validation:**
+Script will automatically verify if all pairs are covered:
+```
+✅ Coverage validation PASSED: All 750 pairs are labeled!
+```
+If any missing, will print missing (resume_id, job_id) and report error.
+
+---
+
+#### Step 2: Run LOOCV + Ablation Evaluation
+
+```bash
+# Run evaluation (train LTR model + calculate metrics)
+cd backend
+python scripts/eval_ablation.py
+```
+
+**Evaluation Method:**
+- **LOOCV (Leave-One-Out Cross-Validation)**:
+  - Each time leave 1 resume for testing, remaining 14 for training
+  - Total 15 folds, ensuring each resume is tested
+  - Suitable for small datasets (15 resumes), avoids overfitting
+- **Test Set Evaluation Scope**:
+  - Evaluates ranking for **all 50 jobs** of test resume
+  - **Not just evaluating top-15** (avoids bias)
+
+**Ablation Comparison Methods:**
+
+| Method | Description |
+|------|------|
+| **embedding_only** | Only uses semantic similarity ranking (M2 baseline) |
+| **heuristic** | M3 heuristic weighting (embedding + skill_overlap + keyword_bonus - gap_penalty) |
+| **ltr_logreg** | M7 Pairwise Logistic Regression (2 features: embedding + keyword_bonus) |
+
+**Evaluation Metrics:**
+- **NDCG@5 / NDCG@10**: Ranking quality (considers position weight, 0-1 higher is better)
+- **Precision@5 / Precision@10**: Relevant job proportion (threshold: label ≥ 4, 0-1 higher is better)
+
+**Output Files:**
+- `backend/results/ablation_results.json` - Detailed results (per-fold + aggregated)
+- `backend/eval/eval_report.md` - Readable evaluation report
+- Terminal output summary table
+
+**Example Output:**
+```
+================================================================
+Summary
+================================================================
+
+embedding_only:
+  ndcg@5          0.723 ± 0.045
+  ndcg@10         0.801 ± 0.032
+  precision@5     0.657 ± 0.089
+  precision@10    0.571 ± 0.067
+
+heuristic:
+  ndcg@5          0.756 ± 0.041
+  ndcg@10         0.825 ± 0.029
+  precision@5     0.714 ± 0.082
+  precision@10    0.600 ± 0.061
+
+ltr_logreg:
+  ndcg@5          0.782 ± 0.038
+  ndcg@10         0.845 ± 0.026
+  precision@5     0.743 ± 0.075
+  precision@10    0.629 ± 0.058
+```
+
+**Model Saving:**
+During evaluation, each fold trains an LTR model. To use in production, need to separately train final model using **all data**:
+```bash
+# Train final model (full data)
+cd backend
+python scripts/train_ltr_model.py `
+  --resumes_path data/resumes.jsonl `
+  --jds_path data/jobs.jsonl `
+  --labels_path eval/labels_suggested.jsonl `
+  --min_rel_diff 2 `
+  --random_state 42
+
+# Default output: models/ltr_logreg.joblib
+```
+
+**Output Example:**
+```
+================================================================================
+LTR Model Training for Production
+================================================================================
+
+[1/6] Loading data...
+  Loaded: 15 resumes, 50 jobs, 750 labels
+
+[2/6] Validating data...
+  ✅ Full coverage: 750/750 pairs labeled
+
+[3/6] Building feature cache...
+  [OK] Cached 750 embedding scores
+  [OK] Built 750 feature vectors
+  Feature dimension: 2
+  Feature names: ['embedding', 'keyword_bonus']
+
+[4/6] Constructing pairwise training data...
+  [OK] Created 5700 pairwise training samples
+
+[5/6] Training LTR model...
+  [OK] Model trained successfully
+
+  Learned feature weights:
+    embedding            +3.4061
+    keyword_bonus        +2.2702
+
+[6/6] Saving model...
+  [OK] Model saved to: models/ltr_logreg.joblib
+
+Training Complete!
+```
+
+---
+
+#### Step 3: Enable LTR in Demo
+
+**Backend API Support:**
+
+`/recommend_jobs` endpoint adds parameter:
+```json
+{
+  "resume": { ... },
+  "top_k": 5,
+  "use_ltr": true  // New: Enable LTR ranking
+}
+```
+
+**Response Adds Field:**
+```json
+{
+  "recommendations": [ ... ],
+  "total_jobs_searched": 50,
+  "explanation": "...",
+  "ranker": "ltr_logreg"  // New: Ranker used
+}
+```
+
+**Possible ranker field values:**
+- `"heuristic"` - Uses M3 heuristic ranking (default, use_ltr=false)
+- `"ltr_logreg"` - Uses LTR model ranking (use_ltr=true and model exists)
+- `"heuristic_fallback"` - LTR failure falls back to heuristic (model doesn't exist or load fails)
+
+**Streamlit Frontend Usage:**
+
+1. Start backend:
+```bash
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+2. Start frontend:
+```bash
+streamlit run frontend/streamlit_app.py
+```
+
+3. Check **"Enable LTR re-ranking (use_ltr)"** checkbox in UI
+4. Click **"Run Match"** to run matching
+5. View ranker identifier at top of results (🤖 LTR or 🔧 Heuristic)
+
+**Effect Comparison:**
+- Unchecked: Uses M3 heuristic ranking (fixed weights)
+- Checked: Uses LTR learned ranking (if model exists)
+
+---
+
+### Key Design Constraints
+
+**Prevent Label Leakage:**
+- ✅ LLM generating labels **does not receive** any system ranking information (matched_skills, gap_skills, scores, topK)
+- ✅ LLM only scores based on original resume and job text
+- ✅ Prompt explicitly tells LLM its role is "independent evaluator"
+
+**LTR Features (Multicollinearity-Aware):**
+- ✅ LTR uses 2 features: **embedding** and **keyword_bonus** (to avoid multicollinearity)
+- ✅ Removed features: skill_overlap and gap_penalty (correlation r>0.95, causing unstable weight learning)
+- ✅ L2 regularization (C=0.1) stabilizes training despite remaining correlation (r=0.89)
+- ✅ Difference from M3: M3 uses fixed weights (all 4 features), LTR learns weights from data (2 features)
+
+**Pairwise Training and Mirrored Pairs:**
+- Default `min_rel_diff=2`: Only constructs training pair when `label_i ≥ label_j + 2`
+- For example: (label=5, label=3) → construct training pair; (label=4, label=3) → don't construct
+- If a resume's labels variance is too small (all jobs' labels are close), may not construct enough pairs
+
+**Why Need Mirrored Pairs?**
+
+Pairwise LTR uses Logistic Regression for binary classification:
+- `y=1` means "first job is better than second job"
+- `y=0` means "first job is not better than second job"
+
+**Key Constraint**: sklearn's LogisticRegression **requires training data to contain at least 2 classes**. If `y_pairs` only contains one class (all 1s), training will fail.
+
+**Solution**: Generate mirrored negative samples for each positive pair:
+```
+Original pair:   (winner - loser, y=1)  # Means winner is better than loser
+Mirrored pair:   (loser - winner, y=0)  # Means loser is not better than winner
+```
+
+Since `loser - winner = -(winner - loser)`, mirrored pair uses opposite feature difference vector, ensuring model learns symmetric ranking relationship.
+
+**Implementation Details:**
+- `construct_pairwise_data()` function's `add_mirror` parameter **defaults to True**
+- Training script automatically checks number of classes in `y_pairs`:
+  - If only 1 class → automatically reconstructs with `add_mirror=True`
+  - If still fails → report error and exit
+- This ensures LogisticRegression always receives valid training data
+
+**Why Enable add_mirror by Default?**
+- Ensures training stability (avoids single-class error)
+- Increases training sample count (about 2x)
+- Provides more balanced class distribution (usually close to 50%-50%)
+- Especially important for small datasets (like this project's 15 resumes)
+
+**Fallback Mechanism:**
+- If a fold's pairwise pairs < 10, LTR training fails, automatically falls back to heuristic
+- If FastAPI can't find `models/ltr_logreg.joblib`, automatically falls back to heuristic, ranker returns `"heuristic_fallback"`
+
+---
+
+### File Description
+
+**New/Modified File List:**
+
+| File Path | Description | Type |
+|----------|------|------|
+| `backend/eval/generate_labels.py` | Full 1-5 weak labels generation (overwrites old 0-3 top-15) | Modified |
+| `backend/src/ranking/features.py` | Feature extraction and vectorization (FEATURE_NAMES fixed order) | New |
+| `backend/src/ranking/pairwise.py` | Pairwise training data construction (with mirror pairs support) | New |
+| `backend/src/ranking/ltr_logreg.py` | Pairwise Logistic Regression model (with save/load) | New |
+| `backend/scripts/eval_ablation.py` | LOOCV + Ablation evaluation script | New |
+| `backend/scripts/train_ltr_model.py` | Production environment LTR model training script (with automatic mirror pairs fallback) | New |
+| `backend/main.py` | FastAPI: Added use_ltr parameter, ranker field | Modified |
+| `frontend/streamlit_app.py` | Streamlit: Added LTR toggle checkbox, ranker display | Modified |
+| `backend/data/resumes.jsonl` | Expanded to 15 resumes | Modified |
+| `backend/data/jobs.jsonl` | Expanded to 50 jobs | Modified |
+| `backend/eval/labels_suggested.jsonl` | Full 750 pairs of labels (1-5 scale) | Overwritten |
+| `backend/models/ltr_logreg.joblib` | Trained LTR model | New (requires running training script) |
+| `backend/results/ablation_results.json` | Ablation study results | New |
+
+---
+
+### Quick Command Summary
+
+```bash
+# ====== Step 1: Generate full 1-5 weak labels ======
+export OPENAI_API_KEY=sk-your-key
+cd backend/eval
+python generate_labels.py
+
+# ====== Step 2: Run LOOCV + Ablation evaluation ======
+cd backend
+python scripts/eval_ablation.py
+
+# ====== Step 3: Train final LTR model (for production) ======
+cd backend
+python scripts/train_ltr_model.py \
+    --resumes_path data/resumes.jsonl \
+    --jds_path data/jobs.jsonl \
+    --labels_path eval/labels_suggested.jsonl
+
+# ====== Step 4: Start Demo ======
+# Terminal 1: Backend
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2: Frontend
+streamlit run frontend/streamlit_app.py
+
+# ====== Coverage validation (optional) ======
+# Training script automatically validates label coverage, no separate run needed
+# View validation results: Run training script to see [2/6] Validating data step output
+```
+
+---
+
+### FAQ
+
+**Q1: Why overwrite old labels_suggested.jsonl?**
+- Old version only annotated top-15 (105 pairs: 7×15), and used 0-3 scale
+- New version covers full (750 pairs: 15×50), uses 1-5 scale
+- Old file is automatically backed up to `archive/` directory, won't be lost
+
+**Q2: Where is the LTR model saved?**
+- Evaluation script (`scripts/eval_ablation.py`) trains model in each fold, but doesn't save
+- Need to separately train full model and save to `models/ltr_logreg.joblib` (see code snippet in step 2)
+- Can also modify evaluation script to save model after last fold ends
+
+**Q3: How does FastAPI use LTR model?**
+- If `use_ltr=true` and `models/ltr_logreg.joblib` exists, load model and rank
+- If model doesn't exist or load fails, automatically falls back to heuristic, ranker returns `"heuristic_fallback"`
+
+**Q4: Is training data sufficient for each LOOCV fold?**
+- 15 resumes, each fold uses 14 for training
+- Each resume has 50 jobs, theoretically can construct many pairwise pairs
+- But if a resume's labels variance is too small, pairs may be insufficient, will fall back to heuristic
+
+**Q5: How to view LTR learned feature weights?**
+```python
+from src.ranking.ltr_logreg import PairwiseLTRModel
+model = PairwiseLTRModel.load('models/ltr_logreg.joblib')
+weights = model.get_feature_weights()
+print(weights)
+# Output example: {'embedding': 3.41, 'keyword_bonus': 2.27}
+```
+
+Or use the provided script:
+```bash
+cd backend
+python view_ltr_weights.py
+```
+
+**Q6: How to add new features?**
+1. Add new feature name at end of `FEATURE_NAMES` list in `src/ranking/features.py`
+2. Calculate new feature value in `build_features()` function
+3. Regenerate labels and train model (feature order change will make old model incompatible)
+
+---
+
+## Next Steps
+
+Future Milestones will implement:
+- ✅ ~~Semantic matching based on vector embeddings~~ (M2 completed)
+- ✅ ~~Batch matching and ranking features~~ (M2 completed)
+- ✅ ~~Explainable lightweight ranking layer~~ (M3 completed)
+- ✅ ~~Integrate LLM for smarter matching analysis and personalized suggestions~~ (M4 completed)
+- ✅ ~~Evaluation system and weak supervision label generation~~ (M5 completed)
+- ✅ ~~Streamlit interactive interface Demo~~ (M6 completed)
+- ✅ ~~Learning to Rank complete pipeline~~ (M7 completed)
+- Database integration to store job and resume data
+- User authentication and authorization system
+- Cache optimization (Redis)
+- Logging and monitoring
+- More recommendation algorithms (hybrid recommendation, collaborative filtering, etc.)
+
+## License
 
 TBD

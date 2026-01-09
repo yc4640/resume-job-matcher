@@ -7,6 +7,7 @@ and explainable ranking for M3 milestone.
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
 import json
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ from typing import List, Optional
 
 from schemas import JobPosting, Resume, MatchResponse
 from services.retrieval import rank_jobs
-from services.ranking import rank_jobs_with_features, explain_ranking, load_config
+from services.ranking import rank_jobs_with_features, load_config
 from services.rag import generate_rag_explanation
 
 # Initialize FastAPI application
@@ -41,6 +42,7 @@ class RecommendJobsRequest(BaseModel):
     """Request model for job recommendation endpoint"""
     resume: Resume
     top_k: int = 5
+    use_ltr: bool = False  # New: Enable LTR re-ranking
 
 
 class RankingFeatures(BaseModel):
@@ -74,7 +76,7 @@ class RecommendJobsResponse(BaseModel):
     """Response model for job recommendation endpoint"""
     recommendations: List[JobRecommendation]
     total_jobs_searched: int
-    explanation: Optional[str] = None  # M3: explanation for top result
+    ranker: str = "heuristic"  # New: which ranker was used ("heuristic", "ltr_logreg", "heuristic_fallback")
 
 
 class ExplainRequest(BaseModel):
@@ -167,18 +169,22 @@ async def recommend_jobs(request: RecommendJobsRequest):
     - M2: Semantic similarity using embeddings
     - M3: Explainable ranking features (skill overlap, keyword bonus, gap penalty)
     - M4: RAG-based explanations (evidence retrieval + LLM generation)
+    - M6: Optional LTR re-ranking (use_ltr parameter)
 
-    The final ranking uses a weighted combination of features configured in YAML.
+    The final ranking uses either:
+    - Heuristic: weighted combination of features (default)
+    - LTR: pairwise logistic regression model (if use_ltr=True and model exists)
+
     For each recommended job, RAG generates:
     - Explanation: Why the job is a good fit (evidence-based)
     - Gap Analysis: What skills/qualifications are missing
     - Improvement Suggestions: Actionable steps to improve fit
 
     Args:
-        request: RecommendJobsRequest containing resume and top_k parameter
+        request: RecommendJobsRequest containing resume, top_k, and use_ltr parameters
 
     Returns:
-        RecommendJobsResponse with ranked job recommendations, features, and RAG explanations
+        RecommendJobsResponse with ranked job recommendations, features, RAG explanations, and ranker info
     """
     # Load all jobs from JSONL file
     jobs = load_jobs_from_jsonl()
@@ -186,8 +192,55 @@ async def recommend_jobs(request: RecommendJobsRequest):
     # Step 1: Get embedding-based similarity scores (M2)
     embedding_results = rank_jobs(request.resume, jobs, top_k=len(jobs))
 
-    # Step 2: Re-rank using explainable features (M3)
-    ranked_results = rank_jobs_with_features(request.resume, embedding_results)
+    # Step 2: Re-rank using explainable features (M3) OR LTR (M6)
+    ranker_used = "heuristic"  # Default
+
+    if request.use_ltr:
+        # Try to load and use LTR model
+        try:
+            from src.ranking.ltr_logreg import PairwiseLTRModel
+
+            model_path = "models/ltr_logreg.joblib"
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"LTR model not found at {model_path}")
+
+            # Load LTR model
+            ltr_model = PairwiseLTRModel.load(model_path)
+
+            # Build embedding cache
+            embedding_cache = {(request.resume.resume_id, r['job'].job_id): r['score'] for r in embedding_results}
+
+            # Rank using LTR
+            ltr_results = ltr_model.rank_jobs(request.resume, jobs, embedding_cache)
+
+            # Convert LTR results to heuristic-compatible format
+            # (LTR doesn't compute all heuristic features, so we recompute them for display)
+            ranked_results = []
+            for ltr_result in ltr_results:
+                job = ltr_result['job']
+                # Find embedding score for this job
+                emb_score = next((r['score'] for r in embedding_results if r['job'].job_id == job.job_id), 0.0)
+
+                # Recompute heuristic features for display (not used for ranking)
+                heuristic_result = rank_jobs_with_features(request.resume, [{'job': job, 'score': emb_score}])
+
+                # Merge: use LTR score but keep heuristic features for display
+                result = heuristic_result[0].copy()
+                result['final_score'] = ltr_result['score']  # Override with LTR score
+                result['rank'] = ltr_result['rank']
+
+                ranked_results.append(result)
+
+            ranker_used = "ltr_logreg"
+
+        except Exception as e:
+            # Fallback to heuristic if LTR fails
+            print(f"LTR ranking failed: {e}. Falling back to heuristic.")
+            ranked_results = rank_jobs_with_features(request.resume, embedding_results)
+            ranker_used = "heuristic_fallback"
+    else:
+        # Use heuristic ranking (default)
+        ranked_results = rank_jobs_with_features(request.resume, embedding_results)
 
     # Step 3: Take top-k results
     top_k_results = ranked_results[:request.top_k]
@@ -243,16 +296,10 @@ async def recommend_jobs(request: RecommendJobsRequest):
         )
         recommendations.append(recommendation)
 
-    # Step 5: Generate explanation for top result
-    explanation = None
-    if top_k_results:
-        config = load_config()
-        explanation = explain_ranking(top_k_results[0], config)
-
     return RecommendJobsResponse(
         recommendations=recommendations,
         total_jobs_searched=len(jobs),
-        explanation=explanation
+        ranker=ranker_used
     )
 
 
@@ -285,15 +332,30 @@ async def explain(request: ExplainRequest):
             improvement_suggestions=None
         )
 
+    # Calculate matched and gap skills using same logic as /recommend_jobs
+    # This ensures consistency between list page and explain page
+    from services.ranking import load_skills_vocabulary, expand_vocab_with_job_skills, normalize_skills
+    from services.utils import merge_resume_skills
+
+    # Load and expand vocab (same as rank_jobs_with_features)
+    vocab = load_skills_vocabulary()
+    vocab = expand_vocab_with_job_skills([target_job], vocab)
+
+    # Merge resume skills (same as rank_jobs_with_features)
+    vocab_list = list(vocab)
+    merged_resume_skills = merge_resume_skills(request.resume, vocab_list)
+
+    # Normalize skills
+    job_skills_normalized = normalize_skills(target_job.skills, vocab)
+    resume_skills_normalized = normalize_skills(merged_resume_skills, vocab)
+
     # Calculate matched and gap skills
-    job_skills_set = set(target_job.skills)
-    resume_skills_set = set(request.resume.skills)
-    matched_skills = list(job_skills_set & resume_skills_set)
-    gap_skills = list(job_skills_set - resume_skills_set)
+    matched_skills = list(resume_skills_normalized & job_skills_normalized)
+    gap_skills = list(job_skills_normalized - resume_skills_normalized)
 
     # Calculate a basic score for the RAG explanation
-    if len(job_skills_set) > 0:
-        basic_score = len(matched_skills) / len(job_skills_set)
+    if len(job_skills_normalized) > 0:
+        basic_score = len(matched_skills) / len(job_skills_normalized)
     else:
         basic_score = 0.0
 

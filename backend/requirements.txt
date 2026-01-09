@@ -13,3 +13,7 @@ pyyaml==6.0.1
 
 # LLM dependencies for M4
 openai==1.12.0
+
+# LTR dependencies for M7
+scikit-learn==1.3.0
+joblib==1.3.2
