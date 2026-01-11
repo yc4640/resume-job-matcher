@@ -1777,10 +1777,6 @@ Future Milestones will implement:
 - ✅ ~~Evaluation system and weak supervision label generation~~ (M5 completed)
 - ✅ ~~Streamlit interactive interface Demo~~ (M6 completed)
 - ✅ ~~Learning to Rank complete pipeline~~ (M7 completed)
-- Database integration to store job and resume data
-- User authentication and authorization system
-- Cache optimization (Redis)
-- Logging and monitoring
 - More recommendation algorithms (hybrid recommendation, collaborative filtering, etc.)
 
 ## License
