@@ -1781,4 +1781,4 @@ Future Milestones will implement:
 
 ## License
 
-TBD
+MIT
