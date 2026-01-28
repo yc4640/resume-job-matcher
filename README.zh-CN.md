@@ -1708,4 +1708,4 @@ python view_ltr_weights.py
 
 ## 许可证
 
-TBD
+MIT
